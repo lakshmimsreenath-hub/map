@@ -1,0 +1,2117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Landfall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500&display=swap">
+<style>
+/* Layout: the 1280×832 "MacBook Air" artboard from playground start, scaled to fit; sketch map on canvas beneath, Figma UI on top.
+   Deliberately single-theme: a white sketchbook page with brown pencil ink. */
+:root{
+  --paper:#ffffff;
+  --ink:#6b4e4e;
+  --ink-strong:#2f2727;
+  --text:#111111;
+  --title:#4a4545;
+  --rule:#a7a3a3;
+  --muted:#8e7f7f;
+  --survival:#a87471;
+  --track:#f1e8e7;
+  --heat:#c9692c;
+  --font:"Fira Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--paper);color:var(--text);font-family:var(--font);overflow:hidden;margin:0;-webkit-user-select:none;user-select:none}
+#nameInput{-webkit-user-select:text;user-select:text}
+[hidden]{display:none!important}
+#stage{position:fixed;inset:0;background:var(--paper)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#cv.pan{cursor:grab}
+#cv.panning{cursor:grabbing}
+#grain{position:absolute;inset:0;pointer-events:none;opacity:.5}
+#design{position:absolute;left:0;top:0;width:1280px;height:832px;transform-origin:0 0;pointer-events:none}
+button{font-family:inherit;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+/* navbar — Figma instance "navbar" 392×67 @ (434,698) */
+#navbar{position:absolute;left:434px;top:698px;width:392px;height:67px;box-sizing:border-box;border:1px solid var(--ink);border-radius:34px;background:var(--paper);display:flex;align-items:center;justify-content:space-evenly;padding:0 8px;pointer-events:auto;opacity:.92}
+.tool{width:50px;height:50px;border:0;background:transparent;border-radius:27px;display:grid;place-items:center;cursor:pointer;color:var(--ink);position:relative;padding:0}
+.tool svg{width:36px;height:36px}
+.tool:hover{background:var(--track)}
+.tool[aria-pressed="true"]::after{content:"";position:absolute;bottom:3px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--ink)}
+
+/* name pill — Figma "Frame 15" 338×82 */
+#namePill{position:absolute;width:338px;height:82px;box-sizing:border-box;border:1.5px solid var(--ink);border-radius:41px;background:var(--paper);display:flex;align-items:center;gap:26px;padding:0 30px;pointer-events:auto;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+#namePill svg{width:40px;height:40px;color:var(--ink);flex:none}
+#nameInput{width:180px;border:0;border-bottom:2px solid var(--ink-strong);background:transparent;font:300 22px var(--font);color:var(--ink-strong);padding:10px 0 2px;margin-top:14px;outline:none;border-radius:0}
+
+/* island card — Figma "Frame 25" 395×318 */
+#card{position:absolute;width:395px;box-sizing:border-box;border:1.5px solid var(--ink);border-radius:34px;background:var(--paper);padding:14px 30px 26px 36px;pointer-events:auto;animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
+#card h2{font-weight:300;font-size:44px;line-height:1.15;color:var(--title);margin:0 0 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr);align-items:center;min-height:52px;font-size:22px;font-weight:300}
+.val{font-size:15px;font-weight:400;color:var(--muted);line-height:1.3}
+.bar{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;color:var(--ink-strong);font-variant-numeric:tabular-nums}
+.track{width:120px;height:10px;border-radius:5px;background:var(--track);overflow:hidden}
+.fill{height:100%;border-radius:5px;background:var(--survival);transition:width .6s}
+.ctl{position:absolute;top:-48px;right:-38px;display:flex;gap:10px}
+.ctl button{width:40px;height:40px;border:0;background:transparent;cursor:pointer;color:var(--ink);padding:0;display:grid;place-items:center}
+.ctl svg{width:34px;height:34px}
+#cardMini{position:absolute;height:40px;box-sizing:border-box;border:1.5px solid var(--ink);border-radius:20px;background:var(--paper);display:flex;align-items:center;gap:10px;padding:0 8px 0 20px;font-size:18px;font-weight:300;color:var(--title);pointer-events:auto;cursor:pointer}
+#cardMini svg{width:24px;height:24px;color:var(--ink)}
+
+/* map annotations — Figma text "Potential Volcano" / "Bay" */
+#labels{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;transform:translate(-50%,-50%);font:400 20px var(--font);color:var(--text);white-space:nowrap}
+button.lbl{pointer-events:auto;border:0;background:transparent;cursor:pointer;padding:0 2px;border-bottom:1.5px dashed var(--ink)}
+button.lbl:hover{color:var(--ink)}
+.lbl.small{font-size:15px;color:var(--ink)}
+.lbl.hot{font-size:15px;color:var(--heat);font-style:italic}
+
+#popStack{position:absolute;display:flex;flex-direction:column;gap:10px;pointer-events:none;z-index:6}
+#popStack .toast{cursor:pointer;font-size:13.5px;padding:11px 36px 11px 16px;box-shadow:0 1px 0 var(--track)}
+#popStack .toast .nt{display:block;font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+#popStack .toast.out{opacity:0;transform:translateX(12px);transition:opacity .45s,transform .45s}
+/* notes tab: a bookmark sticking out of the frame's right edge, and the drawer it opens */
+#notesTab{position:absolute;left:1236px;top:96px;width:34px;height:116px;box-sizing:border-box;border:1px solid var(--ink);border-left:0;border-radius:0 16px 16px 0;background:var(--paper);color:var(--ink);cursor:pointer;pointer-events:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0;font:400 13px var(--font)}
+#notesTab:hover,#notesTab[aria-expanded="true"]{background:var(--track)}
+#notesTab .lbl-v{writing-mode:vertical-rl;letter-spacing:.06em}
+#notesCount{min-width:18px;height:18px;border-radius:9px;background:var(--ink);color:var(--paper);font-size:10.5px;line-height:18px;text-align:center;padding:0 4px;box-sizing:border-box;font-variant-numeric:tabular-nums}
+#notesTab.ping{animation:ping .9s ease-out}
+@keyframes ping{0%{transform:translateX(0)}25%{transform:translateX(5px)}50%{transform:translateX(0)}75%{transform:translateX(3px)}100%{transform:translateX(0)}}
+#notesPanel{position:absolute;right:44px;top:62px;width:360px;max-height:600px;box-sizing:border-box;border:1.25px solid var(--ink);border-radius:22px;background:var(--paper);pointer-events:auto;display:flex;flex-direction:column;animation:pop .25s ease-out;z-index:4}
+#notesPanel header{display:flex;align-items:center;gap:12px;padding:14px 16px 10px 20px;border-bottom:1px solid var(--track)}
+#notesPanel h3{margin:0;font-weight:300;font-size:22px;color:var(--title);flex:1}
+#notesPanel header button{border:0;background:transparent;font:400 13px var(--font);color:var(--muted);cursor:pointer;padding:4px}
+#notesPanel header button:hover{color:var(--ink)}
+#notesList{list-style:none;margin:0;padding:6px 0;overflow-y:auto;min-height:0}
+#notesList li{padding:10px 20px;font-size:14px;line-height:1.45;color:var(--ink-strong);border-bottom:1px dashed var(--track)}
+#notesList li:last-child{border-bottom:0}
+#notesList .nt{display:block;font-size:11px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+#notesList .act{border:0;background:transparent;padding:0;margin-top:4px;font:500 13px var(--font);color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:block}
+#notesEmpty{padding:16px 20px 20px;font-size:14px;color:var(--muted);margin:0}
+.toast{pointer-events:auto;position:relative;border:1.25px solid var(--ink);border-radius:22px;background:var(--paper);padding:12px 42px 12px 18px;font-size:15px;line-height:1.45;color:var(--ink-strong);animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
+.toast .act{border:0;background:transparent;padding:0;margin-top:4px;font:500 14px var(--font);color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:block}
+.toast .x{position:absolute;right:10px;top:8px;width:26px;height:26px;border:0;background:transparent;cursor:pointer;color:var(--ink);font-size:18px;line-height:1}
+
+#hint{display:none!important;position:absolute;left:0;width:1280px;top:672px;text-align:center;font-size:14px;color:var(--muted);pointer-events:none}
+#empty{display:none!important;position:absolute;left:0;width:1280px;top:388px;text-align:center;font-size:24px;font-weight:300;color:var(--muted);pointer-events:none}
+#topbar{position:absolute;right:44px;top:2px;display:flex;gap:18px;pointer-events:auto}
+#topbar button{border:0;background:transparent;font-size:13px;color:var(--muted);cursor:pointer;padding:4px 2px}
+#topbar button:hover{color:var(--ink)}
+.zoom{display:flex;align-items:center;gap:2px;margin-right:10px}
+.zoom button{font-variant-numeric:tabular-nums}
+#zoomIn,#zoomOut{font-size:17px!important;width:24px;line-height:1}
+
+#compass{position:absolute;left:62px;top:672px;width:112px;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:auto;animation:pop .4s cubic-bezier(.2,1.4,.4,1)}
+#compass svg{width:68px;height:68px;cursor:grab;touch-action:none;color:var(--ink)}
+#compass span{font-size:11px;color:var(--muted);text-align:center;line-height:1.25}
+#needle{transition:transform .25s}
+
+
+/* time controls + layers — same outline language as the navbar */
+#timePill{position:absolute;left:170px;top:698px;width:256px;height:67px;box-sizing:border-box;border:1px solid var(--ink);border-radius:34px;background:var(--paper);display:flex;align-items:center;gap:8px;padding:0 10px 0 8px;pointer-events:auto;opacity:.95}
+#playBtn{width:46px;height:46px;border-radius:23px;border:0;background:transparent;cursor:pointer;color:var(--ink);display:grid;place-items:center;flex:none;padding:0}
+#playBtn:hover,#speedBtn:hover,.lyr:hover{background:var(--track)}
+#playBtn svg{width:26px;height:26px}
+.tbox{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.2}
+#timeTxt{font-size:15px;color:var(--ink-strong);font-variant-numeric:tabular-nums;white-space:nowrap}
+#ageTxt{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#speedBtn{border:1px solid var(--rule);border-radius:12px;background:transparent;font-size:11px;color:var(--ink);padding:4px 7px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+#layers{position:absolute;left:842px;top:706px;width:262px;box-sizing:border-box;border:1px solid var(--ink);border-radius:26px;background:var(--paper);display:flex;flex-wrap:wrap;justify-content:center;gap:2px 4px;padding:6px 10px;pointer-events:auto;opacity:.95}
+.lyr{border:0;background:transparent;font-size:12px;color:var(--muted);padding:3px 6px;border-radius:10px;cursor:pointer}
+.lyr[aria-pressed="true"]{color:var(--ink-strong);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px}
+#tip{position:absolute;max-width:300px;box-sizing:border-box;border:1.25px solid var(--ink);border-radius:14px;background:var(--paper);padding:9px 12px;font-size:13px;line-height:1.4;color:var(--ink-strong);pointer-events:none;z-index:5}
+#tip b{font-weight:500;font-size:14px;display:block;margin-bottom:2px}
+#tip .m{color:var(--muted);font-size:11.5px;margin-top:4px;display:block}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="stage">
+  <canvas id="cv" aria-label="Map canvas. Draw land, mountains, forests and rivers."></canvas>
+  <div id="grain"></div>
+  <div id="popStack" aria-live="polite"></div>
+  <div id="design">
+    <div id="topbar"><div class="zoom" role="group" aria-label="Zoom"><button id="zoomOut" type="button" aria-label="Zoom out">−</button><button id="zoomFit" type="button" title="Show the whole world">Whole world · 1×</button><button id="zoomIn" type="button" aria-label="Zoom in">+</button></div><button id="undoBtn" type="button">Undo</button><button id="newBtn" type="button">New map</button></div>
+    <div id="empty" hidden></div>
+    <div id="labels"></div>
+    <button id="notesTab" type="button" aria-expanded="false" aria-controls="notesPanel" aria-label="Notes"><span id="notesCount" hidden>0</span><span class="lbl-v">Notes</span></button>
+    <section id="notesPanel" hidden aria-label="Notes">
+      <header><h3>Notes</h3><button id="notesClear" type="button">Clear</button><button id="notesClose" type="button" aria-label="Close notes">✕</button></header>
+      <p id="notesEmpty">What forms on your map, and why, will be listed here.</p>
+      <ul id="notesList" aria-live="polite"></ul>
+    </section>
+
+    <form id="namePill" hidden>
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M6 26v-6L20 6l6 6-14 14H6z"/><path d="M16.5 9.5l6 6"/></svg>
+      <input id="nameInput" maxlength="26" autocomplete="off" aria-label="Name this land">
+    </form>
+
+    <section id="card" hidden aria-label="Land details">
+      <div class="ctl">
+        <button id="cardCollapse" type="button" aria-label="Collapse card"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 21L16 11l11 10"/></svg></button>
+        <button id="cardClose" type="button" aria-label="Close card"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l20 20M26 6L6 26"/></svg></button>
+      </div>
+      <h2 id="cardTitle">Icarus Island</h2>
+      <div class="row"><span>Vegetation</span><span class="val" id="vVeg">—</span></div>
+      <div class="row"><span>Climate</span><span class="val" id="vClim">—</span></div>
+      <div class="row"><span>Animal</span><span class="val" id="vAni">—</span></div>
+      <div class="row"><span>Landforms</span><span class="val" id="vLand">—</span></div>
+      <div class="row"><span>Survival</span><span class="bar"><span class="track"><span class="fill" id="vBar" style="width:0%"></span></span><span id="vPct">0%</span></span></div>
+    </section>
+    <div id="cardMini" hidden role="button" tabindex="0"><span id="miniName"></span><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 12l10 10 10-10"/></svg></div>
+
+    <div id="compass" hidden>
+      <svg viewBox="0 0 68 68" aria-label="Wind compass. Drag to steer the clouds, double-click to reset.">
+        <circle cx="34" cy="34" r="30" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/>
+        <circle cx="34" cy="34" r="25" fill="none" stroke="currentColor" stroke-width=".6" stroke-dasharray="1.5 3"/>
+        <text x="34" y="12.5" text-anchor="middle" font-size="7" fill="currentColor" font-family="Fira Sans, sans-serif">N</text>
+        <g id="needle" style="transform-origin:34px 34px"><path d="M56 34L34 29.5 12 34l22 4.5z" fill="var(--paper)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M56 34L34 29.5 34 38.5z" fill="currentColor"/></g>
+        <circle cx="34" cy="34" r="2.2" fill="currentColor"/>
+      </svg>
+      <span id="compassCap">Prevailing wind</span>
+    </div>
+
+
+    <div id="timePill" role="group" aria-label="Time">
+      <button id="playBtn" type="button" aria-label="Pause time"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g id="icoPause"><path d="M11 7v18M21 7v18"/></g><g id="icoPlay" style="display:none"><path d="M10 6l16 10-16 10z"/></g></svg></button>
+      <div class="tbox"><span id="timeTxt">0 years</span><span id="ageTxt">Interglacial · sea level 0 m</span></div>
+      <button id="speedBtn" type="button" title="Change how fast time passes">10k yr/s</button>
+    </div>
+    <div id="layers" role="group" aria-label="Map layers">
+      <button class="lyr" type="button" data-l="winds" aria-pressed="false">Winds</button>
+      <button class="lyr" type="button" data-l="currents" aria-pressed="false">Currents</button>
+      <button class="lyr" type="button" data-l="plates" aria-pressed="false">Plates</button>
+      <button class="lyr" type="button" data-l="rocks" aria-pressed="false">Rocks</button>
+      <button class="lyr" type="button" data-l="seafloor" aria-pressed="false">Sea floor</button>
+    </div>
+    <div id="tip" hidden></div>
+    <div id="hint" hidden></div>
+    <nav id="navbar" aria-label="Tools">
+      <button class="tool" data-tool="pencil" aria-label="Draw land (1)" aria-pressed="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M6 26v-6L20 6l6 6-14 14H6z"/><path d="M16.5 9.5l6 6"/></svg></button>
+      <button class="tool" data-tool="mountain" aria-label="Raise mountains (2)" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><circle cx="20.5" cy="7" r="2.4"/><path d="M3 26L12 12l9 14"/><path d="M15.5 17.5L19 13l10 13H3"/></svg></button>
+      <button class="tool" data-tool="tree" aria-label="Plant forests (3)" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M16 23c-6 0-8-5-7-10s4-9 7-9 6 4 7 9-1 10-7 10z"/><path d="M16 29V13M16 19l4-4M16 16l-3-3"/></svg></button>
+      <button class="tool" data-tool="river" aria-label="Carve rivers (4)" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M5 7l8 2 6-2 8 2v16l-8-2-6 2-8-2z"/><path d="M12 9c7 2-2 6 4 8s-1 5 1 7"/><path d="M15.5 8.5c6 2.5-1.5 6 4 8s-.5 4.5 1 6.5"/></svg></button>
+      <button class="tool" data-tool="ruler" aria-label="Measure distance (5)" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4 20L20 4l8 8-16 16z"/><path d="M9 15l3 3M12.5 11.5l2 2M15.5 8.5l3 3M7 17l1.5 1.5M18 6l1.5 1.5"/></svg></button>
+      <button class="tool" data-tool="eraser" aria-label="Erase land (6)" aria-pressed="false"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M17.5 5.5l9 9-12 12h-7l-4-4z"/><path d="M11.5 11.5l9 9"/><path d="M14.5 26.5H28"/></svg></button>
+    </nav>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- constants & tokens ----------
+const css = getComputedStyle(document.documentElement);
+const tok = (n, d) => (css.getPropertyValue(n).trim() || d);
+const PAPER = tok('--paper', '#fff'), INK = tok('--ink', '#6b4e4e'), RULE = tok('--rule', '#a7a3a3'), MUTED = tok('--muted', '#8e7f7f'), HEATC = tok('--heat', '#c9692c');
+const LAND = '#cddda0', WATER = '#bad6e0', SNOWC = '#7f9cab', TREEC = '#a9c46f', LAVA = '#e3874a', COLD = '#4f7f99', ICEC = '#eef5f8';
+const FONT = '"Fira Sans", "Segoe UI", system-ui, sans-serif';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const W0 = 1280, H0 = 832, FX = 44, FY = 42, FW = 1192, FH = 746;
+const C = 4, COLS = Math.ceil(FW / C), ROWS = Math.ceil(FH / C), N = COLS * ROWS;
+const ZMAX = 12;
+const MORPH = RM ? 0.01 : 1.15, POP = RM ? 0.01 : 0.6, WASH = RM ? 0.01 : 0.9;
+const KMY = C / FH * 17760;                       // km per cell north–south
+const kmxAt = lat => C / FW * 40000 * Math.max(.05, Math.cos(lat * Math.PI / 180));
+const PX_PER_CM = 1 / 3.36e6;                     // 1 world px ≈ 33.6 km
+
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const stc = document.createElement('canvas'), sx = stc.getContext('2d');
+const design = $('design');
+
+// ---------- math helpers ----------
+function hash3(a, b, c) { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 2246822519); h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function vnoise(x, y, seed) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash3(xi, yi, seed), b = hash3(xi + 1, yi, seed), c = hash3(xi, yi + 1, seed), d = hash3(xi + 1, yi + 1, seed);
+  return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1;
+}
+const fbm = (x, y, s) => vnoise(x, y, s) * .6 + vnoise(x * 2.1, y * 2.1, s + 1) * .3 + vnoise(x * 4.3, y * 4.3, s + 2) * .1;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function polyArea(p) { let a = 0; for (let i = 0, n = p.length; i < n; i++) { const q = p[i], r = p[(i + 1) % n]; a += q[0] * r[1] - r[0] * q[1]; } return a / 2; }
+function perimeter(p, closed) { let L = 0; for (let i = 1; i < p.length; i++) L += dist(p[i - 1], p[i]); if (closed) L += dist(p[p.length - 1], p[0]); return L; }
+function centroid(p) { let x = 0, y = 0; p.forEach(q => { x += q[0]; y += q[1]; }); return [x / p.length, y / p.length]; }
+function pip(pt, p) { let ins = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const a = p[i], b = p[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) ins = !ins; } return ins; }
+function resample(pts, n, closed) {
+  const P = closed ? [...pts, pts[0]] : pts; const L = [0];
+  for (let i = 1; i < P.length; i++) L.push(L[i - 1] + dist(P[i - 1], P[i]));
+  const tot = L[L.length - 1] || 1, out = []; let j = 0;
+  for (let k = 0; k < n; k++) {
+    const d = closed ? k / n * tot : k / (n - 1) * tot;
+    while (j < P.length - 2 && L[j + 1] < d) j++;
+    const seg = (L[j + 1] - L[j]) || 1, f = clamp((d - L[j]) / seg, 0, 1);
+    out.push([P[j][0] + (P[j + 1][0] - P[j][0]) * f, P[j][1] + (P[j + 1][1] - P[j][1]) * f]);
+  }
+  return out;
+}
+function smooth(p, r, closed) {
+  const n = p.length; return p.map((_, i) => {
+    let x = 0, y = 0, c = 0;
+    for (let k = -r; k <= r; k++) { let j = i + k; if (closed) j = (j + n) % n; else j = clamp(j, 0, n - 1); x += p[j][0]; y += p[j][1]; c++; }
+    return [x / c, y / c];
+  });
+}
+function normalsOf(p) {
+  const n = p.length, sg = polyArea(p) > 0 ? 1 : -1;
+  return p.map((_, i) => { const a = p[(i - 1 + n) % n], b = p[(i + 1) % n]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; return [sg * ty / l, -sg * tx / l]; });
+}
+function hull(pts) {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1]; const t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1), 0, 1); const q = [a[0] + dx * t, a[1] + dy * t]; return [dist(p, q), q]; }
+const latOf = y => 80 - (y - FY) / FH * 160;
+const lonOf = x => (x - FX) / FW * 360 - 180;
+const yOfLat = l => FY + (80 - l) / 160 * FH;
+const xOfLon = l => FX + (l + 180) / 360 * FW;
+const latRow = r => latOf(FY + (r + .5) * C);
+function haversine(a, b) {
+  const R = 6371, r = Math.PI / 180, la1 = latOf(a[1]) * r, la2 = latOf(b[1]) * r, dl = (lonOf(b[0]) - lonOf(a[0])) * r;
+  const h = Math.sin((la2 - la1) / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+const fmtInt = n => Math.round(n).toLocaleString('en-US');
+function fmtYears(t) { if (t < 1e6) return `${fmtInt(t < 1e4 ? t : Math.round(t / 100) * 100)} yr`; return `${(t / 1e6).toFixed(t < 1e7 ? 2 : 1)} million yr`; }
+function fmtAge(t) { if (t < 1000) return `${fmtInt(Math.max(1, t))} years`; if (t < 1e6) return `${fmtInt(Math.round(t / 1000))},000 years`; return `${(t / 1e6).toFixed(1)} million years`; }
+
+// ---------- camera ----------
+const cam = { z: 1, x: FX, y: FY };
+let camT = null, ZW = 1, camMoved = true;
+const w2d = p => [FX + (p[0] - cam.x) * cam.z, FY + (p[1] - cam.y) * cam.z];
+const d2w = p => [cam.x + (p[0] - FX) / cam.z, cam.y + (p[1] - FY) / cam.z];
+function clampCam(c) { c.z = clamp(c.z, 1, ZMAX); c.x = clamp(c.x, FX, FX + FW - FW / c.z); c.y = clamp(c.y, FY, FY + FH - FH / c.z); return c; }
+function view() { return { x0: cam.x, y0: cam.y, x1: cam.x + FW / cam.z, y1: cam.y + FH / cam.z }; }
+function applyCam(c) { c.translate(FX, FY); c.scale(cam.z, cam.z); c.translate(-cam.x, -cam.y); }
+function zoomAt(dp, f) { const w = d2w(dp), z = clamp(cam.z * f, 1, ZMAX); cam.z = z; cam.x = w[0] - (dp[0] - FX) / z; cam.y = w[1] - (dp[1] - FY) / z; clampCam(cam); camT = null; camMoved = true; }
+function flyTo(z, cx, cy) { camT = clampCam({ z, x: cx - FW / z / 2, y: cy - FH / z / 2 }); }
+function focusIsland(isl) { const b = isl.bbox; flyTo(clamp(Math.min(FW * .5 / (b.maxX - b.minX), FH * .5 / (b.maxY - b.minY)), 1, ZMAX), (b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2); }
+function stepCam(dt) {
+  if (!camT) return;
+  const k = 1 - Math.exp(-dt * (RM ? 60 : 7));
+  const lz = Math.log(cam.z) + (Math.log(camT.z) - Math.log(cam.z)) * k;
+  const cxw = cam.x + FW / cam.z / 2, cyw = cam.y + FH / cam.z / 2, tx = camT.x + FW / camT.z / 2, ty = camT.y + FH / camT.z / 2;
+  cam.z = Math.exp(lz); const ncx = cxw + (tx - cxw) * k, ncy = cyw + (ty - cyw) * k;
+  cam.x = ncx - FW / cam.z / 2; cam.y = ncy - FH / cam.z / 2; clampCam(cam); camMoved = true;
+  if (Math.abs(cam.z - camT.z) < .002 * camT.z && Math.abs(ncx - tx) < .05 && Math.abs(ncy - ty) < .05) { Object.assign(cam, camT); camT = null; }
+}
+
+// ---------- world state ----------
+let islands = [], mountains = [], trees = [], rivers = [], volcanoes = [], homes = [], atolls = [], seamounts = [], erases = [];
+let eraseR = 16;   // eraser radius in screen px
+let windOverride = null, tool = 'pencil', selectedId = null, nextId = 1;
+let staticDirty = true, drag = null, ruler = null, clouds = [], flock = null, pendingName = null, spaceDown = false;
+const layers = { winds: false, currents: false, plates: false, rocks: false, seafloor: false };
+const undoStack = [], shown = new Set();
+const SPEEDS = [1e3, 1e4, 1e5, 1e6];
+let simT = 0, playing = true, speedI = 1, lastGeoSimT = 0, lastGeoReal = 0, landChanged = true, geoDirty = false, featDirty = true;
+
+const WSEED = 20261004;
+const rng = i => hash3(i, 911, WSEED);
+
+// ---------- tectonic plates (the engine) ----------
+const NP = 9;
+const PLATES = Array.from({ length: NP }, (_, i) => {
+  const a = rng(i * 7) * Math.PI * 2, sp = 2 + rng(i * 7 + 1) * 7;   // cm per year
+  return { x: FX + rng(i * 7 + 2) * FW, y: FY + 40 + rng(i * 7 + 3) * (FH - 80), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, sp, name: 'Plate ' + String.fromCharCode(65 + i) };
+});
+const HOTSPOTS = Array.from({ length: 3 }, (_, i) => ({ x: FX + 120 + rng(100 + i) * (FW - 240), y: yOfLat(-25 + rng(110 + i) * 50), lastSpawn: -9e9, n: 0 }));
+const plateOf = new Uint8Array(N);
+for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  const wx = FX + (x + .5) * C + 40 * fbm(x / 22, y / 22, 300), wy = FY + (y + .5) * C + 40 * fbm(x / 22, y / 22, 400);
+  let best = 1e9, bi = 0;
+  PLATES.forEach((p, i) => { let dx = Math.abs(wx - p.x); dx = Math.min(dx, FW - dx); const d = dx * dx + (wy - p.y) ** 2; if (d < best) { best = d; bi = i; } });
+  plateOf[y * COLS + x] = bi;
+}
+const plateAt = (x, y) => { const k = cellAt(x, y); return PLATES[k < 0 ? 0 : plateOf[k]]; };
+
+// ---------- coastline generator ----------
+function coastalize(raw, seed, rough, k) {
+  const per0 = perimeter(raw, true);
+  const n = clamp(Math.round(per0 / (3.2 * k)), 60, 720);
+  let base = resample(raw, n, true);
+  for (let i = 0; i < 4; i++) base = smooth(base, 3, true);
+  base = resample(base, n, true);
+  const nor = normalsOf(base);
+  const size = Math.sqrt(Math.abs(polyArea(base))), per = perimeter(base, true);
+  const oct = [[180 * k, Math.min(size * .085, 30 * k)], [70 * k, Math.min(size * .04, 15 * k)], [26 * k, Math.min(size * .02, 7 * k)], [10 * k, 2.6 * k], [4.5 * k, 1.1 * k]];
+  const coast = base.map((p, i) => {
+    const th = i / n * Math.PI * 2; let d = 0;
+    oct.forEach(([wl, amp], o) => { const R = Math.min(per / wl, 400) / (Math.PI * 2); d += amp * rough * vnoise(Math.cos(th) * R + o * 17.3, Math.sin(th) * R + o * 5.1, seed + o * 13); });
+    return [p[0] + nor[i][0] * d, p[1] + nor[i][1] * d];
+  });
+  return { base, coast, normals: nor };
+}
+function prepIsland(isl) {
+  const xs = isl.coast.map(p => p[0]), ys = isl.coast.map(p => p[1]);
+  isl.bbox = { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+  isl.center = centroid(isl.coast);
+  return isl;
+}
+const visible = b => { const v = view(), m = 30 / cam.z; return b.maxX > v.x0 - m && b.minX < v.x1 + m && b.maxY > v.y0 - m && b.minY < v.y1 + m; };
+
+// ---------- grids ----------
+const F32 = () => new Float32Array(N), U8 = () => new Uint8Array(N);
+const land = new Int16Array(N), dco = F32(), doc = F32(), rdist = F32(), tden = F32();
+const elev = F32(), fillE = F32(), slope = F32(), rcv = new Int32Array(N), acc = F32(), lake = U8(), playaC = U8(), riverC = U8();
+let order = new Int32Array(0);
+const veg = F32(), cap = F32(), pBase = F32(), tBase = F32(), wbonus = F32(), meltC = U8(), vegTrend = F32();
+const enclosed = U8(), rock = U8(), bType = U8(), bRate = F32(), dCC = F32(), dOC = F32(), dOO = F32(), dDiv = F32(), dTr = F32(), dHot = F32(), actv = U8();
+const temp = F32(), precip = F32(), biome = U8(), hab = F32(), wstrong = F32();
+const iceYears = F32(), sheetYears = F32(), wetYears = F32(), karstYears = F32(), aridYears = F32(), volcYears = F32(), riverYears = F32(), deltaYears = F32(), coastYears = F32();
+const iceNow = U8(), iceKind = U8(), iceFlowX = F32(), iceFlowY = F32();
+const ROCKS = [null,
+  { n: 'Granite', hard: .92, sol: 0, perm: .12, col: [214, 170, 170] },
+  { n: 'Basalt', hard: .8, sol: 0, perm: .5, col: [150, 156, 140] },
+  { n: 'Limestone', hard: .55, sol: 1, perm: .7, col: [168, 196, 214] },
+  { n: 'Sandstone', hard: .45, sol: 0, perm: .8, col: [230, 205, 140] },
+  { n: 'Shale', hard: .25, sol: 0, perm: .05, col: [178, 176, 168] }];
+const BIOMES = [null,
+  { n: 'Ice sheet', c: [228, 237, 241], a: 'Seals, snow owls' },
+  { n: 'Tundra', c: [214, 220, 204], a: 'Caribou, arctic foxes' },
+  { n: 'Taiga', c: [152, 180, 124], a: 'Elk, lynx, wolves' },
+  { n: 'Cold steppe', c: [208, 209, 166], a: 'Wild horses, marmots' },
+  { n: 'Temperate forest', c: [166, 198, 112], a: 'Deer, foxes, owls' },
+  { n: 'Grassland', c: [198, 216, 140], a: 'Bison, hares, hawks' },
+  { n: 'Shrubland', c: [216, 210, 152], a: 'Goats, lizards' },
+  { n: 'Rainforest', c: [128, 178, 96], a: 'Monkeys, parrots, jaguars' },
+  { n: 'Savanna', c: [220, 212, 130], a: 'Zebras, lions, elephants' },
+  { n: 'Desert', c: [238, 214, 152], a: 'Camels, scorpions' },
+  { n: 'Scorched waste', c: [242, 168, 98], a: 'Nothing survives the core' }];
+
+// ---------- landforms ----------
+const FEATS = [
+  ['VOLCANO', 'Volcano'], ['CALDERA', 'Caldera'], ['GEYSER', 'Geyser'], ['HORN', 'Horn'], ['CENOTE', 'Cenote'],
+  ['CAVE', 'Cave'], ['SINKHOLE', 'Sinkhole'], ['KTOWER', 'Karst towers'], ['CIRQUE', 'Cirque'], ['ARETE', 'Arête'],
+  ['DELTA', 'Delta'], ['AFAN', 'Alluvial fan'], ['OXBOW', 'Oxbow lake'], ['CANYON', 'Canyon'], ['FJORD', 'Fjord'],
+  ['GLACIER', 'Glacier'], ['ESKER', 'Esker'], ['DRUMLIN', 'Drumlins'], ['KAME', 'Kame'], ['MORAINE', 'Moraine'],
+  ['MANGROVE', 'Mangroves'], ['SWAMP', 'Swamp'], ['BOG', 'Bog'], ['FEN', 'Fen'], ['MARSH', 'Marsh'],
+  ['YARDANG', 'Yardangs'], ['DUNE', 'Dunes'], ['LAVA', 'Lava field'], ['RIFT', 'Rift valley'], ['FAULT', 'Fault line'],
+  ['FOLD', 'Mountain range'], ['PLAYA', 'Playa'], ['ERG', 'Erg (sand sea)'], ['ICESHEET', 'Ice sheet'], ['ICECAP', 'Ice cap'],
+  ['LAKE', 'Lake'], ['RIVER', 'River']
+];
+const F = {}; FEATS.forEach(([k], i) => F[k] = i);
+const NF = FEATS.length;
+const featT = Array.from({ length: NF }, () => new Float32Array(N).fill(-1));
+const has = (f, k) => featT[f][k] >= 0;
+const TRANSIENT = new Set([F.GLACIER, F.ICESHEET, F.ICECAP, F.PLAYA, F.DUNE, F.ERG, F.SWAMP, F.MARSH, F.BOG, F.FEN, F.MANGROVE, F.LAKE, F.RIVER, F.FOLD, F.FJORD, F.OXBOW, F.DELTA]);
+const MAJOR_LABEL = new Set([F.ICESHEET, F.ICECAP, F.ERG, F.RIFT, F.LAVA, F.KTOWER, F.FJORD, F.DELTA, F.CANYON, F.PLAYA, F.SWAMP, F.MARSH, F.BOG, F.FEN, F.MANGROVE, F.DRUMLIN, F.ESKER, F.MORAINE, F.FOLD, F.FAULT, F.DUNE, F.YARDANG, F.LAKE, F.AFAN]);
+const POINT_LABEL = new Set([F.VOLCANO, F.CALDERA, F.GEYSER, F.CENOTE, F.HORN, F.OXBOW, F.CIRQUE, F.ARETE, F.KAME, F.GLACIER]);
+
+// ---------- raster helpers ----------
+const mkC = () => { const c = document.createElement('canvas'); c.width = COLS; c.height = ROWS; return c; };
+const mcv = mkC(), mx = mcv.getContext('2d', { willReadFrequently: true });
+const bcv = mkC(), bx = bcv.getContext('2d');      // biome wash
+const ocv = mkC(), ovx = ocv.getContext('2d');     // ice / lakes / sand overlay
+const rcvs = mkC(), rx = rcvs.getContext('2d');    // rocks
+const scv = mkC(), sfx = scv.getContext('2d');     // sea floor depth
+function rasterMask(drawFn) {
+  mx.setTransform(1, 0, 0, 1, 0, 0); mx.clearRect(0, 0, COLS, ROWS);
+  mx.setTransform(1 / C, 0, 0, 1 / C, -FX / C, -FY / C);
+  mx.fillStyle = '#fff'; mx.strokeStyle = '#fff'; mx.lineCap = 'round'; mx.lineJoin = 'round';
+  drawFn(mx);
+  return mx.getImageData(0, 0, COLS, ROWS).data;
+}
+function chamfer(isSrc, out) {
+  for (let k = 0; k < N; k++) out[k] = isSrc(k) ? 0 : 1e6;
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const k = y * COLS + x; let v = out[k];
+    if (x > 0) v = Math.min(v, out[k - 1] + 1);
+    if (y > 0) { v = Math.min(v, out[k - COLS] + 1); if (x > 0) v = Math.min(v, out[k - COLS - 1] + 1.414); if (x < COLS - 1) v = Math.min(v, out[k - COLS + 1] + 1.414); }
+    out[k] = v;
+  }
+  for (let y = ROWS - 1; y >= 0; y--) for (let x = COLS - 1; x >= 0; x--) {
+    const k = y * COLS + x; let v = out[k];
+    if (x < COLS - 1) v = Math.min(v, out[k + 1] + 1);
+    if (y < ROWS - 1) { v = Math.min(v, out[k + COLS] + 1); if (x < COLS - 1) v = Math.min(v, out[k + COLS + 1] + 1.414); if (x > 0) v = Math.min(v, out[k + COLS - 1] + 1.414); }
+    out[k] = v;
+  }
+}
+function cellAt(x, y) { const cx = Math.floor((x - FX) / C), cy = Math.floor((y - FY) / C); return (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) ? -1 : cy * COLS + cx; }
+const cx_ = k => FX + (k % COLS + .5) * C, cy_ = k => FY + (((k / COLS) | 0) + .5) * C;
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+function nbrs(k, fn, eight = true) { const x = k % COLS, y = (k / COLS) | 0; for (let i = 0; i < (eight ? 8 : 4); i++) { const a = x + N8[i][0], b = y + N8[i][1]; if (a >= 0 && b >= 0 && a < COLS && b < ROWS) fn(b * COLS + a, N8[i][0], N8[i][1]); } }
+function nearLand(k, r) { const x = k % COLS, y = (k / COLS) | 0; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS && land[b * COLS + a]) return true; } return false; }
+
+// ---------- atmosphere: three-cell circulation ----------
+// surface winds of the Hadley, Ferrel and polar cells, turned by the Coriolis effect
+function windAt(lat) {
+  if (windOverride !== null) return [Math.cos(windOverride), Math.sin(windOverride)];
+  const a = Math.abs(lat), hemi = lat >= 0 ? 1 : -1; let u, v;   // u: eastward, v: toward the equator
+  if (a < 30) { const s = Math.sin(Math.PI * a / 30); u = -(.25 + .75 * s); v = .45 * s; }
+  else if (a < 60) { const s = Math.sin(Math.PI * (a - 30) / 30); u = .2 + .8 * s; v = -.35 * s; }
+  else { const s = Math.sin(Math.PI * (a - 60) / 30); u = -.6 * s - .1; v = .3 * s; }
+  return [u, v * hemi];
+}
+const windName = lat => { const a = Math.abs(lat); return windOverride !== null ? 'steered wind' : a < 30 ? 'trade winds' : a < 60 ? 'westerlies' : 'polar easterlies'; };
+// rain belts: rising air at the ITCZ and the polar front, sinking dry air near 30°
+function rainBelt(lat) { const a = Math.abs(lat); return clamp(.32 + .85 * Math.exp(-((a / 9) ** 2)) - .42 * Math.exp(-(((a - 27) / 7) ** 2)) + .35 * Math.exp(-(((a - 55) / 9) ** 2)) - .25 * Math.exp(-(((a - 85) / 8) ** 2)), .05, 1.2); }
+
+// ---------- ocean: wind-driven circulation (Stommel model, β-plane, friction) ----------
+const OC = 2, OCOLS = Math.ceil(COLS / OC), OROWS = Math.ceil(ROWS / OC), ON = OCOLS * OROWS;
+const psi = new Float32Array(ON), ou = new Float32Array(ON), ov = new Float32Array(ON), sst = new Float32Array(ON), sstA = new Float32Array(ON), oMask = new Uint8Array(ON);
+const sstBase = lat => 28 * Math.pow(Math.cos(lat * Math.PI / 180), 1.4) - 1.5;
+const olat = j => latOf(FY + (j + .5) * OC * C);
+function solveOcean() {
+  for (let j = 0; j < OROWS; j++) for (let i = 0; i < OCOLS; i++) {
+    let w = 0, c = 0; for (let b = 0; b < OC; b++) for (let a = 0; a < OC; a++) { const x = i * OC + a, y = j * OC + b; if (x < COLS && y < ROWS) { c++; if (!land[y * COLS + x]) w++; } }
+    oMask[j * OCOLS + i] = (j > 0 && j < OROWS - 1 && w * 2 > c) ? 1 : 0;
+  }
+  const tau = j => { const a = Math.abs(olat(j)); return a < 30 ? -Math.sin(Math.PI * a / 30) : a < 60 ? Math.sin(Math.PI * (a - 30) / 30) : -.6 * Math.sin(Math.PI * (a - 60) / 30); };
+  const r = 3, Fj = new Float32Array(OROWS), Bj = new Float32Array(OROWS);
+  for (let j = 1; j < OROWS - 1; j++) { Fj[j] = (tau(j + 1) - tau(j - 1)) / 2; Bj[j] = Math.cos(olat(j) * Math.PI / 180); }
+  for (let it = 0; it < 420; it++) {
+    for (let j = 1; j < OROWS - 1; j++) for (let i = 0; i < OCOLS; i++) {
+      const k = j * OCOLS + i; if (!oMask[k]) { psi[k] = 0; continue; }
+      const E = psi[j * OCOLS + (i + 1) % OCOLS], W = psi[j * OCOLS + (i - 1 + OCOLS) % OCOLS], Nn = psi[k - OCOLS], S = psi[k + OCOLS];
+      const nv = (r * (E + W + Nn + S) + Bj[j] * (E - W) / 2 - Fj[j]) / (4 * r);
+      psi[k] += 1.6 * (nv - psi[k]);
+    }
+  }
+  const sp = [];
+  for (let k = 0; k < ON; k++) { ou[k] = ov[k] = 0; }
+  for (let j = 1; j < OROWS - 1; j++) for (let i = 0; i < OCOLS; i++) {
+    const k = j * OCOLS + i; if (!oMask[k]) continue;
+    const E = psi[j * OCOLS + (i + 1) % OCOLS], W = psi[j * OCOLS + (i - 1 + OCOLS) % OCOLS];
+    const u = (psi[k + OCOLS] - psi[k - OCOLS]) / 2, vN = (E - W) / 2;
+    ou[k] = u; ov[k] = -vN; sp.push(Math.hypot(u, vN));
+  }
+  sp.sort((a, b) => a - b); const s90 = sp[Math.floor(sp.length * .9)] || 1;
+  for (let k = 0; k < ON; k++) { ou[k] = clamp(ou[k] / s90, -2, 2); ov[k] = clamp(ov[k] / s90, -2, 2); }
+  // sea surface temperature: poleward currents carry warmth, equatorward ones cold; upwelling chills eastern-boundary coasts
+  for (let j = 0; j < OROWS; j++) for (let i = 0; i < OCOLS; i++) {
+    const k = j * OCOLS + i, la = olat(j), hemi = la >= 0 ? 1 : -1;
+    const pole = -ov[k] * hemi;
+    let a = 8 * pole * Math.sin(Math.abs(la) * Math.PI / 180);
+    if (oMask[k] && Math.abs(la) > 10 && Math.abs(la) < 40) { for (let d = 1; d <= 2; d++) { const e = j * OCOLS + (i + d) % OCOLS; if (!oMask[e]) { a -= 4; break; } } }
+    sstA[k] = clamp(a, -8, 8); sst[k] = sstBase(la) + sstA[k];
+  }
+}
+const okAt = (x, y) => { const i = clamp(Math.floor((x - FX) / (C * OC)), 0, OCOLS - 1), j = clamp(Math.floor((y - FY) / (C * OC)), 0, OROWS - 1); return j * OCOLS + i; };
+function currentAt(x, y) {
+  const fx = (x - FX) / (C * OC) - .5, fy = (y - FY) / (C * OC) - .5, i = Math.floor(fx), j = Math.floor(fy), a = fx - i, b = fy - j;
+  const g = (ii, jj) => { ii = (ii + OCOLS) % OCOLS; jj = clamp(jj, 0, OROWS - 1); return jj * OCOLS + ii; };
+  const k1 = g(i, j), k2 = g(i + 1, j), k3 = g(i, j + 1), k4 = g(i + 1, j + 1);
+  return [(ou[k1] * (1 - a) + ou[k2] * a) * (1 - b) + (ou[k3] * (1 - a) + ou[k4] * a) * b, (ov[k1] * (1 - a) + ov[k2] * a) * (1 - b) + (ov[k3] * (1 - a) + ov[k4] * a) * b];
+}
+
+// ---------- geology + climate pass ----------
+function heapPush(h, k, v) { h.k.push(k); h.v.push(v); let i = h.k.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (h.v[p] <= h.v[i]) break; [h.v[p], h.v[i]] = [h.v[i], h.v[p]]; [h.k[p], h.k[i]] = [h.k[i], h.k[p]]; i = p; } }
+function heapPop(h) { const top = h.k[0], tv = h.v[0], lk = h.k.pop(), lv = h.v.pop(); if (h.k.length) { h.k[0] = lk; h.v[0] = lv; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < h.k.length && h.v[l] < h.v[m]) m = l; if (r < h.k.length && h.v[r] < h.v[m]) m = r; if (m === i) break; [h.v[m], h.v[i]] = [h.v[i], h.v[m]]; [h.k[m], h.k[i]] = [h.k[i], h.k[m]]; i = m; } } return [top, tv]; }
+
+function geoUpdate(full) {
+  // 1. land mask, canals, hand-drawn rivers
+  land.fill(0);
+  islands.forEach((isl, i) => { const d = rasterMask(m => { m.beginPath(); polyPath(m, isl.coast); m.fill(); }); for (let k = 0; k < N; k++) if (d[k * 4 + 3] > 120) land[k] = i + 1; });
+  const canals = rivers.filter(r => r.canal);
+  if (canals.length) { const d = rasterMask(m => { canals.forEach(r => { m.lineWidth = Math.max(12 * r.k, C * 1.3); m.beginPath(); openPath(m, r.pts); m.stroke(); }); }); for (let k = 0; k < N; k++) if (d[k * 4 + 3] > 110) land[k] = 0; }
+  const rv = rivers.filter(r => !r.canal);
+  if (rv.length) { const d = rasterMask(m => { rv.forEach(r => { m.lineWidth = Math.max(6 * r.k, C); m.beginPath(); openPath(m, r.pts); m.stroke(); }); }); chamfer(k => d[k * 4 + 3] > 60, rdist); } else rdist.fill(1e6);
+  if (erases.length) { const d = rasterMask(m => { m.beginPath(); erases.forEach(e => e.blobs.forEach(b => polyPath(m, b.poly))); m.fill('nonzero'); }); for (let k = 0; k < N; k++) if (d[k * 4 + 3] > 110) land[k] = 0; }
+  for (let k = 0; k < N; k++) if (!land[k]) for (let f = 0; f < NF; f++) featT[f][k] = -1;   // landforms go when their ground does
+  markEnclosed();
+  chamfer(k => land[k] === 0, dco); chamfer(k => land[k] > 0, doc);
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) { const k = y * COLS + x; dco[k] = Math.min(dco[k], 1); }
+  tden.fill(0);
+  trees.forEach(t => { const cx = Math.floor((t.x - FX) / C), cy = Math.floor((t.y - FY) / C); for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) { if (x < 0 || y < 0 || x >= COLS || y >= ROWS) continue; tden[y * COLS + x] += 1; } });
+  // 2. plate boundaries — continental vs oceanic crust decides what happens
+  bType.fill(0); bRate.fill(0);
+  const srcCC = U8(), srcOC = U8(), srcOO = U8(), srcDiv = U8(), srcTr = U8();
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const k = y * COLS + x, p = plateOf[k];
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const a = (x + dx) % COLS, b = y + dy; if (b >= ROWS) continue; const k2 = b * COLS + a, q = plateOf[k2]; if (q === p) continue;
+      const P = PLATES[p], Q = PLATES[q], rel = (Q.vx - P.vx) * dx + (Q.vy - P.vy) * dy;   // > 0 opening
+      const c1 = land[k] > 0, c2 = land[k2] > 0;
+      const t = rel < -1.2 ? 1 : rel > 1.2 ? 2 : 3;
+      bType[k] = bType[k2] = t; bRate[k] = bRate[k2] = Math.abs(rel);
+      if (t === 1) { if (c1 && c2) srcCC[k] = srcCC[k2] = 1; else if (c1 !== c2) srcOC[k] = srcOC[k2] = 1; else srcOO[k] = srcOO[k2] = 1; }
+      if (t === 2) srcDiv[k] = srcDiv[k2] = 1;
+      if (t === 3) srcTr[k] = srcTr[k2] = 1;
+    }
+  }
+  chamfer(k => srcCC[k], dCC); chamfer(k => srcOC[k], dOC); chamfer(k => srcOO[k], dOO); chamfer(k => srcDiv[k], dDiv); chamfer(k => srcTr[k], dTr);
+  for (let k = 0; k < N; k++) { let m = 1e6; const x = cx_(k), y = cy_(k); HOTSPOTS.forEach(h => { m = Math.min(m, Math.hypot(x - h.x, y - h.y) / C); }); dHot[k] = m; }
+  // 3. rock type: basalt where magma rises, granite in collision zones and old shields, limestone from warm shallow seas
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const k = y * COLS + x;
+    if (!land[k]) { rock[k] = 2; continue; }
+    const la = Math.abs(latRow(y)), n1 = fbm(x / 14, y / 14, 61), n2 = fbm(x / 9, y / 9, 71);
+    let r;
+    if (dDiv[k] < 3 || dHot[k] < 4) r = 2;
+    else if (dCC[k] < 4 || dOC[k] < 4) r = n2 > .35 ? 2 : 1;
+    else if (n1 + (la < 35 ? .32 : 0) + (dco[k] < 10 ? .08 : 0) > .45) r = 3;
+    else if (n2 > .15) r = 4; else if (n2 < -.2) r = 5; else r = 1;
+    rock[k] = r;
+  }
+  // 4. elevation (m): tectonic uplift matures over millions of years; hard rock stands higher
+  const mat = .35 + .65 * (1 - Math.exp(-simT / 3e6)), matR = .4 + .6 * (1 - Math.exp(-simT / 1e6));
+  for (let y = 0; y < ROWS; y++) {
+    const la = latRow(y), kmc = kmxAt(la);
+    for (let x = 0; x < COLS; x++) {
+      const k = y * COLS + x;
+      if (land[k]) {
+        const hard = ROCKS[rock[k]].hard, dkm = dco[k] * kmc;
+        let e = 40 + 380 * (1 - Math.exp(-dkm / 700)) + 220 * (fbm(x / 9, y / 9, 51) * .5 + .5);
+        if (dCC[k] < 7) e += 6200 * mat * (.55 + .45 * hard) * Math.exp(-((dCC[k] / 2.6) ** 2)) * (.75 + .25 * fbm(x / 3, y / 3, 81));
+        if (dOC[k] < 7) e += 3900 * mat * (.6 + .4 * hard) * Math.exp(-(((dOC[k] - 2.2) / 1.8) ** 2)) * (.75 + .25 * fbm(x / 3, y / 3, 82));
+        if (dDiv[k] < 5) e += -650 * matR * Math.exp(-((dDiv[k] / 1.1) ** 2)) + 800 * matR * Math.exp(-(((dDiv[k] - 2.3) / .9) ** 2));
+        if (dHot[k] < 6) e += 1300 * Math.exp(-((dHot[k] / 2.3) ** 2));
+        elev[k] = Math.max(2, e);
+      } else {
+        const dkm = doc[k] * kmxAt(la);
+        let d = dkm < 160 ? -(50 + 130 * dkm / 160) : dkm < 420 ? -180 - (dkm - 160) / 260 * 3300 : -4300 - 500 * (fbm(x / 10, y / 10, 91) * .5 + .5);
+        if (dDiv[k] < 5) d += 2100 * Math.exp(-((dDiv[k] / 1.6) ** 2));
+        const dc = Math.min(dOC[k], dOO[k]); if (dc < 2.5) d = Math.min(d, -7600 - 3200 * Math.exp(-dc));
+        if (dHot[k] < 3) d += 1500 * Math.exp(-dHot[k]);
+        if (enclosed[k]) d = Math.max(d, -(30 + doc[k] * 60));
+        elev[k] = d;
+      }
+    }
+  }
+  const bump = (wx, wy, h, sig) => { const gx = (wx - FX) / C, gy = (wy - FY) / C, R = Math.ceil(sig * 3); for (let y = Math.floor(gy - R); y <= gy + R; y++) for (let x = Math.floor(gx - R); x <= gx + R; x++) { if (x < 0 || y < 0 || x >= COLS || y >= ROWS) continue; const k = y * COLS + x; if (!land[k]) continue; const g = Math.exp(-((x + .5 - gx) ** 2 + (y + .5 - gy) ** 2) / (2 * sig * sig)); elev[k] = Math.max(elev[k], elev[k] * .4 + h * g); } };
+  mountains.forEach(m => bump(m.x, m.y - m.s * .5, 2400 + 1400 * hash3(m.seed, 3, 3), Math.max(.6, m.s * 1.1 / C)));
+  volcanoes.forEach(v => bump(v.x, v.y, 2600, Math.max(.6, v.s / C)));
+  for (let k = 0; k < N; k++) { if (!land[k]) { slope[k] = 0; continue; } let s = 0; const kx = kmxAt(latOf(cy_(k))); nbrs(k, (k2, dx, dy) => { s = Math.max(s, Math.abs(elev[k] - elev[k2]) / Math.hypot(dx * kx, dy * KMY)); }); slope[k] = s; }
+  // 5. ocean currents only change when coastlines change
+  if (full || landChanged) { solveOcean(); landChanged = false; }
+  // 6. climate, 7. water, 8. paint
+  climatePass(); routeWater();
+  paintBiome(); paintRocks(); paintSeafloor();
+  computeIslandStats(); computeGeometry(); buildRiverLines(); updateActivity();
+  geoDirty = false; staticDirty = true;
+}
+function climatePass() {
+  for (let y = 0; y < ROWS; y++) {
+    const la = latRow(y), clat = Math.cos(la * Math.PI / 180), kmc = kmxAt(la), T0 = -15 + 45 * Math.pow(Math.max(0, clat), 1.5), w = windAt(la), belt = rainBelt(la);
+    for (let x = 0; x < COLS; x++) {
+      const k = y * COLS + x;
+      if (!land[k]) { temp[k] = sst[okAt(cx_(k), cy_(k))]; precip[k] = belt; biome[k] = 0; hab[k] = 0; continue; }
+      // trace the air back upwind to the sea it picked its moisture up from
+      let qx = x + .5, qy = y + .5, steps = 0, maxE = 0, src = -1;
+      for (let s = 0; s < 170; s++) {
+        qx -= w[0]; qy -= w[1];
+        let ix = Math.floor(qx); const iy = Math.floor(qy);
+        if (iy < 0 || iy >= ROWS) break; ix = (ix % COLS + COLS) % COLS;
+        const k2 = iy * COLS + ix; if (!land[k2]) { src = k2; break; }
+        steps++; if (elev[k2] > maxE) maxE = elev[k2];
+      }
+      const so = src >= 0 ? okAt(cx_(src), cy_(src)) : -1, sT = so >= 0 ? sst[so] : 10, sA = so >= 0 ? sstA[so] : 0;
+      const m0 = clamp((sT + 4) / 30, .12, 1);                     // warm seas evaporate more
+      const shadow = Math.exp(-Math.max(0, maxE - elev[k] - 300) / 1400); // rain shadow behind high ground
+      let M = m0 * Math.exp(-steps * kmc / 1700) * shadow;
+      let ix2 = Math.floor(x + .5 + w[0] * 2); const iy2 = Math.floor(y + .5 + w[1] * 2);
+      if (iy2 >= 0 && iy2 < ROWS) { ix2 = (ix2 % COLS + COLS) % COLS; const rise = elev[iy2 * COLS + ix2] - elev[k]; if (rise > 0) M += Math.min(.4, rise / 2500); }  // windward slopes
+      if (elev[k] > 1500) M += .1;
+      const dkm = dco[k] * kmc;
+      let T = T0 > 16 ? T0 + Math.min(15, dkm / 230) * clamp((T0 - 16) / 12, 0, 1) : T0 - Math.min(14, dkm / 450);
+      if (dkm < 600) T += sA * .6 * (1 - dkm / 600);               // warm or cold current offshore
+      T -= 6.5 * elev[k] / 1000;                                     // lapse rate
+      const rd = rdist[k]; if (rd < 10) { M = Math.max(M, .8 - rd * .055); T -= (10 - rd) * .4; }
+      if (dkm <= 300) M = Math.max(M, .5 * m0);
+      const P = clamp(M * belt * 1.25, .008, 1.3);
+      tBase[k] = T; pBase[k] = P; setClimate(k, T - 1.5 * veg[k], P + recycle(k));
+      wstrong[k] = windOverride !== null ? 1 : Math.hypot(w[0], w[1]);
+    }
+  }
+}
+const RTHR = 6;
+function routeWater() {
+  acc.fill(0); lake.fill(0); playaC.fill(0); riverC.fill(0); rcv.fill(-1);
+  const seen = U8(), h = { k: [], v: [] }, ord = [];
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) continue; let edge = false, sea = -1;
+    nbrs(k, k2 => { if (!land[k2]) { edge = true; sea = k2; } });
+    const x = k % COLS, y = (k / COLS) | 0; if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) edge = true;
+    if (edge) { seen[k] = 1; fillE[k] = elev[k]; rcv[k] = sea; heapPush(h, k, elev[k]); }
+  }
+  while (h.k.length) {
+    const [k, v] = heapPop(h); ord.push(k);
+    nbrs(k, k2 => { if (!land[k2] || seen[k2]) return; seen[k2] = 1; const f = Math.max(elev[k2], v + .01); fillE[k2] = f; rcv[k2] = k; if (f > elev[k2] + 15) lake[k2] = 1; heapPush(h, k2, f); });
+  }
+  order = Int32Array.from(ord);
+  for (let i = order.length - 1; i >= 0; i--) {
+    const k = order[i];
+    acc[k] += precip[k] * (1 - .5 * ROCKS[rock[k]].perm) * Math.cos(latOf(cy_(k)) * Math.PI / 180);
+    if (lake[k] && precip[k] < .24) { playaC[k] = 1; continue; }     // closed basin: evaporation beats inflow
+    const r = rcv[k]; if (r >= 0 && land[r]) acc[r] += acc[k];
+  }
+  for (let k = 0; k < N; k++) if (land[k] && ((acc[k] > RTHR && !lake[k]) || rdist[k] < .8)) riverC[k] = 1;
+}
+let riverLines = [];
+function classify(T, P) {
+  if (T < -6) return 1; if (T < 2) return 2; if (T < 9) return P > .35 ? 3 : 4;
+  if (T < 23) return P > .5 ? 5 : P > .26 ? 6 : 7;
+  if (T < 35) return P > .58 ? 8 : P > .28 ? 9 : 10; return 11;
+}
+function setClimate(k, T, P) {
+  const tS = T < -8 || T > 39 ? 0 : T < 5 ? (T + 8) / 13 : T > 28 ? (39 - T) / 11 : 1;
+  temp[k] = T; precip[k] = P; biome[k] = classify(T, P); hab[k] = tS * clamp((P - .06) / .32, 0, 1) * (.85 + .15 * veg[k]);
+}
+// forests return moisture to the air (transpiration), so a big enough forest raises its own rainfall
+function recycle(k) { const x = k % COLS, y = (k / COLS) | 0; let s = 0, n = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS) { s += veg[b * COLS + a]; n++; } } return .3 * s / n; }
+function buildRiverLines() {
+  riverLines = [];
+  const used = U8(), up = U8();
+  const isR = k => riverC[k] || meltC[k];
+  for (let k = 0; k < N; k++) if (isR(k) && rcv[k] >= 0 && isR(rcv[k])) up[rcv[k]] = 1;
+  for (let k = 0; k < N; k++) {
+    if (!isR(k) || up[k] || rdist[k] < .8 && acc[k] <= RTHR) continue;
+    const pts = [], ws = []; let c = k, guard = 0;
+    while (c >= 0 && guard++ < 3000) {
+      pts.push([cx_(c) + (hash3(c, 1, 5) - .5) * C * .55, cy_(c) + (hash3(c, 2, 5) - .5) * C * .55]); ws.push(Math.max(acc[c], meltC[c] ? RTHR * 1.5 : 0));
+      if (used[c]) break; used[c] = 1;
+      const r = rcv[c]; if (r < 0) break;
+      if (!land[r]) { pts.push([(cx_(r) + cx_(c)) / 2, (cy_(r) + cy_(c)) / 2]); ws.push(acc[c]); break; }
+      if (playaC[c] || lake[r]) { pts.push([cx_(r), cy_(r)]); ws.push(acc[c]); break; }
+      c = r;
+    }
+    if (pts.length > 1) riverLines.push({ pts, ws });
+  }
+}
+function paintBiome() {
+  const img = bx.createImageData(COLS, ROWS), px = img.data;
+  for (let k = 0; k < N; k++) { if (!land[k]) continue; const col = BIOMES[biome[k]].c, f = Math.min(.55, veg[k] * .6); px[k * 4] = col[0] * (1 - f) + 118 * f; px[k * 4 + 1] = col[1] * (1 - f) + 168 * f; px[k * 4 + 2] = col[2] * (1 - f) + 88 * f; px[k * 4 + 3] = 255; }
+  bx.putImageData(img, 0, 0);
+}
+function paintRocks() {
+  const img = rx.createImageData(COLS, ROWS), px = img.data;
+  for (let k = 0; k < N; k++) { if (!land[k]) continue; const col = ROCKS[rock[k]].col; px[k * 4] = col[0]; px[k * 4 + 1] = col[1]; px[k * 4 + 2] = col[2]; px[k * 4 + 3] = 255; }
+  rx.putImageData(img, 0, 0);
+}
+function paintSeafloor() {
+  const img = sfx.createImageData(COLS, ROWS), px = img.data;
+  for (let k = 0; k < N; k++) { if (land[k]) continue; const d = clamp(-elev[k] / 9000, 0, 1); px[k * 4] = 205 - d * 120; px[k * 4 + 1] = 226 - d * 110; px[k * 4 + 2] = 236 - d * 70; px[k * 4 + 3] = 255; }
+  sfx.putImageData(img, 0, 0);
+}
+function paintOverlay() {
+  const img = ovx.createImageData(COLS, ROWS), px = img.data;
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) continue; let c = null, a = 0;
+    if (iceNow[k]) { c = [240, 246, 250]; a = 235; }
+    else if (playaC[k]) { c = [244, 238, 222]; a = 230; }
+    else if (lake[k]) { c = [186, 214, 224]; a = 255; }
+    else if (has(F.ERG, k)) { c = [240, 220, 160]; a = 150; }
+    else if (has(F.LAVA, k)) { c = [120, 116, 110]; a = 110; }
+    if (c) { px[k * 4] = c[0]; px[k * 4 + 1] = c[1]; px[k * 4 + 2] = c[2]; px[k * 4 + 3] = a; }
+  }
+  ovx.putImageData(img, 0, 0);
+}
+// volcanic activity zones: arcs above subducting ocean crust, hotspots, rifts
+function updateActivity() {
+  for (let k = 0; k < N; k++) { let a = 0; if (land[k]) { if (dOC[k] >= 1 && dOC[k] <= 4.5) a = 1; else if (dHot[k] < 2.5) a = 2; else if (dDiv[k] < 2) a = 3; } actv[k] = a; }
+}
+
+// ---------- shapes of the coast: peninsulas, isthmuses, capes, archipelagos ----------
+function markEnclosed() {
+  enclosed.fill(0); const seen = U8();
+  for (let k = 0; k < N; k++) {
+    if (land[k] || seen[k]) continue; const q = [k], cells = []; seen[k] = 1; let edge = false;
+    while (q.length) { const c = q.pop(); cells.push(c); const x = c % COLS, y = (c / COLS) | 0; if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) edge = true; nbrs(c, k2 => { if (!land[k2] && !seen[k2]) { seen[k2] = 1; q.push(k2); } }, false); }
+    if (!edge && cells.length <= 2500) cells.forEach(c => enclosed[c] = cells.length > 60 ? 2 : 1);
+  }
+}
+let geoLabels = [];
+function computeGeometry() {
+  geoLabels = [];
+  // water that can't reach the open ocean is a lake or an inland sea
+  enclosed.fill(0); const wseen = U8();
+  for (let k = 0; k < N; k++) {
+    if (land[k] || wseen[k]) continue; const q = [k], cells = []; wseen[k] = 1; let edge = false;
+    while (q.length) { const c = q.pop(); cells.push(c); const x = c % COLS, y = (c / COLS) | 0; if (x === 0 || y === 0 || x === COLS - 1 || y === ROWS - 1) edge = true; nbrs(c, k2 => { if (!land[k2] && !wseen[k2]) { wseen[k2] = 1; q.push(k2); } }, false); }
+    if (edge || cells.length > 2500) continue;
+    let x = 0, y = 0, P = 0; cells.forEach(c => { enclosed[c] = cells.length > 60 ? 2 : 1; x += cx_(c); y += cy_(c); });
+    cells.forEach(c => { nbrs(c, k2 => { if (land[k2]) P = Math.max(P, precip[k2]); }); });
+    const salty = P < .25; cells.forEach(c => { if (salty) enclosed[c] += 2; });
+    geoLabels.push({ text: (cells.length > 60 ? 'Inland sea' : salty ? 'Salt lake' : 'Lake'), x: x / cells.length, y: y / cells.length, size: cells.length + 6, water: true });
+  }
+  const comp = new Int32Array(N).fill(-1), comps = [];
+  for (let k = 0; k < N; k++) {
+    if (!land[k] || comp[k] >= 0) continue; const q = [k], cells = []; comp[k] = comps.length;
+    while (q.length) { const c = q.pop(); cells.push(c); nbrs(c, k2 => { if (land[k2] && comp[k2] < 0) { comp[k2] = comps.length; q.push(k2); } }, false); }
+    let x = 0, y = 0; cells.forEach(c => { x += cx_(c); y += cy_(c); }); comps.push({ cells, x: x / cells.length, y: y / cells.length });
+  }
+  // morphological opening: land more than 2 cells from the sea, grown back by 2 — what's left over is narrow
+  const grown = U8();
+  for (let k = 0; k < N; k++) if (land[k] && dco[k] > 2.1) { const x = k % COLS, y = (k / COLS) | 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS && land[b * COLS + a]) grown[b * COLS + a] = 1; } }
+  const coreComp = new Int32Array(N).fill(-1); let nc = 0;
+  for (let k = 0; k < N; k++) { if (!grown[k] || coreComp[k] >= 0) continue; const q = [k]; coreComp[k] = nc; while (q.length) { const c = q.pop(); nbrs(c, k2 => { if (grown[k2] && coreComp[k2] < 0) { coreComp[k2] = nc; q.push(k2); } }, false); } nc++; }
+  const seen = U8();
+  for (let k = 0; k < N; k++) {
+    if (!land[k] || grown[k] || seen[k]) continue;
+    const q = [k], cells = [], touch = new Set(); seen[k] = 1;
+    while (q.length) { const c = q.pop(); cells.push(c); nbrs(c, k2 => { if (!land[k2]) return; if (grown[k2]) touch.add(coreComp[k2]); else if (!seen[k2]) { seen[k2] = 1; q.push(k2); } }, false); }
+    if (cells.length < 3) continue;
+    let x = 0, y = 0; cells.forEach(c => { x += cx_(c); y += cy_(c); }); x /= cells.length; y /= cells.length;
+    if (touch.size >= 2) geoLabels.push({ text: 'Isthmus', x, y, size: cells.length });
+    else if (touch.size === 1) {
+      geoLabels.push({ text: 'Peninsula', x, y, size: cells.length });
+      let best = -1, bk = -1; cells.forEach(c => { const d = Math.hypot(cx_(c) - x, cy_(c) - y); if (dco[c] <= 1 && d > best) { best = d; bk = c; } });
+      if (bk >= 0) geoLabels.push({ text: 'Cape', x: cx_(bk), y: cy_(bk), size: 3 });
+    }
+  }
+  const small = comps.filter(c => c.cells.length < 220), used = new Set();
+  small.forEach((c, i) => {
+    if (used.has(i)) return; const grp = [i];
+    small.forEach((d, j) => { if (j !== i && !used.has(j) && Math.hypot(c.x - d.x, c.y - d.y) < 70) grp.push(j); });
+    if (grp.length >= 3) { grp.forEach(g => used.add(g)); let x = 0, y = 0; grp.forEach(g => { x += small[g].x; y += small[g].y; }); geoLabels.push({ text: 'Archipelago', x: x / grp.length, y: y / grp.length - 16, size: grp.length * 10 }); }
+  });
+}
+
+// ---------- island stats for the card ----------
+function computeIslandStats() {
+  const st = islands.map(() => ({ v: 0, n: 0, T: 0, M: 0, H: 0, hot: 0, cold: 0, arid: 0, bio: new Array(12).fill(0), tmax: -99, hx: 0, hy: 0 }));
+  for (let k = 0; k < N; k++) {
+    const li = land[k]; if (!li || !st[li - 1]) continue; const s = st[li - 1], T = temp[k];
+    s.n++; s.v += veg[k]; s.T += T; s.M += precip[k]; s.H += hab[k]; s.bio[biome[k]]++;
+    if (T >= 35) s.hot++; if (T < 0) s.cold++; if (precip[k] < .2 && T >= 0) s.arid++;
+    if (T > s.tmax) { s.tmax = T; s.hx = cx_(k); s.hy = cy_(k); }
+  }
+  islands.forEach((isl, i) => {
+    const s = st[i]; if (!s.n) { isl.stats = null; return; }
+    const top = s.bio.map((c, b) => [c, b]).filter(a => a[0] > 0).sort((a, b) => b[0] - a[0]);
+    const mT = s.T / s.n, mM = s.M / s.n;
+    const zone = mT > 24 ? (mM < .25 ? 'Hot and arid' : 'Tropical') : mT > 12 ? (mM < .25 ? 'Dry temperate' : 'Temperate') : mT > 1 ? 'Cool continental' : 'Polar';
+    const veg = top.slice(0, 2).filter((a, j) => j === 0 || a[0] / s.n > .18).map(a => BIOMES[a[1]].n);
+    const liv = top.find(a => a[1] !== 11);
+    isl.stats = {
+      cells: s.n, T: mT, M: mM, survival: Math.round(s.H / s.n * 100), hotFrac: s.hot / s.n, coldFrac: s.cold / s.n, aridFrac: s.arid / s.n,
+      tmax: s.tmax, hot: [s.hx, s.hy], areaFrac: s.n / N,
+      forest: s.v / s.n, vegetation: veg.join(', ') + ` · ${Math.round(s.v / s.n * 100)}% forest`, climate: `${zone}, ${Math.round(mT)}°C, ${fmtInt(Math.round(mM * 2000 / 50) * 50)} mm rain`, animals: liv ? BIOMES[liv[1]].a : BIOMES[11].a
+    };
+  });
+}
+
+// ---------- deep time: the ice-age cycle ----------
+// ~100,000-year sawtooth (slow cooling, fast warming) plus the 41,000-year tilt wobble; 0 = today's interglacial
+function climA(t) { const p = ((t % 1e5) + 1e5) % 1e5 / 1e5; const saw = p < .9 ? -7 * (p / .9) : -7 + 7 * ((p - .9) / .1); return saw + .7 * Math.sin(2 * Math.PI * t / 41000); }
+const seaLevel = a => clamp(120 * a / 7, -125, 6);
+const polarAmp = la => 1 + .9 * Math.abs(Math.sin(la * Math.PI / 180));   // poles swing more than the tropics
+const iceCond = (T, P) => P > .06 && T < -2 + 4 * Math.min(P, 1);
+let pendingNews = [];
+function simStep(dt) {
+  const t0 = simT, t1 = simT + dt; simT = t1;
+  const S = clamp(Math.ceil(dt / 2500), 1, 24), as = []; for (let i = 0; i < S; i++) as.push(climA(t0 + (i + .5) * dt / S));
+  const aNow = climA(t1), SL = seaLevel(aNow);
+  for (let k = 0; k < N; k++) { iceNow[k] = land[k] && iceCond(temp[k] + aNow * polarAmp(latOf(cy_(k))), precip[k]) ? 1 : 0; }
+  // classify ice bodies: sheet (> 50,000 km²), cap (smaller, on high ground), mountain glacier
+  iceKind.fill(0); const ic = U8();
+  for (let k = 0; k < N; k++) {
+    if (!iceNow[k] || ic[k]) continue; const q = [k], cells = []; ic[k] = 1; let area = 0, e = 0;
+    while (q.length) { const c = q.pop(); cells.push(c); area += kmxAt(latOf(cy_(c))) * KMY; e += elev[c]; nbrs(c, k2 => { if (iceNow[k2] && !ic[k2]) { ic[k2] = 1; q.push(k2); } }, false); }
+    const kind = area > 50000 ? 1 : (e / cells.length > 700 ? 2 : 3); cells.forEach(c => iceKind[c] = kind);
+  }
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) continue;
+    const amp = polarAmp(latOf(cy_(k))), P = precip[k];
+    let f = 0; for (let i = 0; i < S; i++) if (iceCond(temp[k] + as[i] * amp, P)) f++; f /= S;
+    iceYears[k] += dt * f; if (iceKind[k] === 1) sheetYears[k] += dt * f;
+    const T = temp[k] + aNow * amp;
+    const wet = (P > .55 || riverC[k] || lake[k] || rdist[k] < 2) && slope[k] < 6 && elev[k] < 500 && !iceNow[k] && T > -3;
+    wetYears[k] = wet ? wetYears[k] + dt : wetYears[k] * .5;
+    if (rock[k] === 3 && !iceNow[k] && T > 0) karstYears[k] += dt * Math.min(1, P * 1.4);
+    const arid = P < .2 && T > 0 && !iceNow[k];
+    aridYears[k] = arid ? aridYears[k] + dt : Math.max(0, aridYears[k] - dt * 2);
+    if (actv[k]) volcYears[k] += dt;
+    if (riverC[k]) riverYears[k] += dt;
+    deltaYears[k] = riverC[k] && SL > -20 ? deltaYears[k] + dt : 0;   // deltas build once sea level holds steady
+    if (dco[k] <= 1.5) coastYears[k] += dt;
+  }
+  // ice flows from where it has lasted longest toward its edges (drumlins line up with it)
+  for (let k = 0; k < N; k++) { if (!land[k] || sheetYears[k] <= 0) continue; let gx = 0, gy = 0; nbrs(k, (k2, dx, dy) => { const d = sheetYears[k] - sheetYears[k2]; gx += dx * d; gy += dy * d; }); const l = Math.hypot(gx, gy) || 1; iceFlowX[k] = gx / l; iceFlowY[k] = gy / l; }
+  growVegetation(dt, aNow); treeLife();
+  evaluateFeatures(t1, dt, SL, aNow);
+  hotspots(t0, t1);
+  return { aNow, SL };
+}
+// ---------- living vegetation: grows, spreads, dies, and feeds back on rainfall ----------
+// meltwater: glaciers melt at their edges every summer and feed streams that run downhill, even across deserts
+function traceMelt() {
+  meltC.fill(0);
+  for (let k = 0; k < N; k++) {
+    if (!iceNow[k]) continue; let edge = false; nbrs(k, k2 => { if (land[k2] && !iceNow[k2]) edge = true; }, false); if (!edge) continue;
+    let c = rcv[k], g = 0; while (c >= 0 && land[c] && g++ < 80) { if (!iceNow[c]) meltC[c] = 1; if (lake[c] || playaC[c]) break; c = rcv[c]; }
+  }
+}
+function growVegetation(dt, aNow) {
+  const before = meltC.reduce((a, b) => a + b, 0); traceMelt(); const after = meltC.reduce((a, b) => a + b, 0); if (before !== after) buildRiverLines();
+  // groundwater near rivers, meltwater streams and lakes lets trees grow where rain alone can't keep them alive
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) { wbonus[k] = 0; continue; } const x = k % COLS, y = (k / COLS) | 0; let w = 0;
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const a = x + i, b = y + j; if (a < 0 || b < 0 || a >= COLS || b >= ROWS) continue; const q = b * COLS + a; const src = riverC[q] || meltC[q] || rdist[q] < 1 ? 1 : lake[q] && !playaC[q] ? .8 : 0; if (src) w = Math.max(w, src * Math.exp(-(i * i + j * j) / 2.2)); }
+    wbonus[k] = .42 * w;
+  }
+  const gUp = 1 - Math.exp(-dt / 300), gDown = 1 - Math.exp(-dt / 90), pioneer = Math.min(1, dt / 2500);
+  const nv = new Float32Array(N);
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) { nv[k] = 0; continue; }
+    const la = latOf(cy_(k)), T = tBase[k] + aNow * polarAmp(la), P = pBase[k] + recycle(k) + wbonus[k];
+    const tf = iceNow[k] ? 0 : T < -6 ? 0 : T < 2 ? (T + 6) / 8 : T > 36 ? 0 : T > 30 ? (36 - T) / 6 : 1;
+    const c_ = clamp((P - .16) / .34, 0, 1) * tf; cap[k] = c_;
+    let v = veg[k];
+    if (v < c_) {
+      // seeds arrive from neighbouring forest, or slowly by wind and birds
+      let nb = 0; nbrs(k, k2 => { nb = Math.max(nb, veg[k2]); });
+      if (v > .02 || nb > .12) v += (c_ - v) * gUp; else v += c_ * pioneer * .3;
+    } else v -= (v - c_) * gDown;
+    nv[k] = clamp(v, 0, 1); vegTrend[k] = nv[k] - veg[k];
+  }
+  veg.set(nv);
+  for (let k = 0; k < N; k++) if (land[k]) setClimate(k, tBase[k] - 1.5 * veg[k], pBase[k] + recycle(k));
+  paintBiome(); computeIslandStats();
+  vegNews();
+}
+// planted trees live and die with the forest cover of their ground
+// planted trees: a real-time grace period so you can keep drawing, then a slow, visible decline if the land can't support them
+const TREE_GRACE = 15, WILT = 5, SNAG = 6;   // seconds on screen
+function treeLife() {
+  const now = performance.now() / 1000, died = new Map();
+  trees.forEach(t => {
+    const k = cellAt(t.x, t.y); if (k < 0) return;
+    if (t.t0 === undefined) t.t0 = simT;
+    if (t.rt0 === undefined) t.rt0 = now;
+    // young saplings are tended: they hold their ground for a while whatever the climate
+    if (now - t.rt0 < TREE_GRACE || simT - t.t0 < 1500) { veg[k] = Math.max(veg[k], .3); t.dying = 0; t.dyingRt = 0; return; }
+    const failing = veg[k] < .12 && cap[k] < veg[k] + .02;
+    if (failing && !t.dyingRt) { t.dying = simT; t.dyingRt = now; died.set(t.isl, (died.get(t.isl) || 0) + 1); }
+    else if (!failing && veg[k] > .2 && t.dyingRt && now - t.dyingRt < WILT) { t.dying = 0; t.dyingRt = 0; }   // rain came back in time
+    if (t.dyingRt && now - t.dyingRt > WILT + SNAG) t.gone = true;
+  });
+  const n0 = trees.length; trees = trees.filter(t => !t.gone);
+  died.forEach((n, id) => { const isl = islands.find(i => i.id === id); if (!isl || n < 3) return; toast(`die-${id}-${Math.floor(simT / 2e5)}`, `Trees on ${isl.name || 'this land'} are wilting. The ground gets too little water to keep them alive. Plant near a river or a glacier's meltwater, or plant densely enough to raise the rainfall.`); });
+  return n0 !== trees.length;
+}
+function vegNews() {
+  islands.forEach((isl, i) => {
+    if (!isl.named || isl.kind === 'volcanic') return; const idx = i + 1;
+    let n = 0, f = 0, terra = 0, rip = 0, melt = 0, gainP = 0;
+    for (let k = 0; k < N; k++) {
+      if (land[k] !== idx) continue; n++; f += veg[k];
+      if (pBase[k] < .2 && veg[k] > .3) { if (wbonus[k] > .15) { rip++; if (meltC[k] || meltNear(k)) melt++; } else { terra++; gainP += recycle(k); } }
+    }
+    if (!n) return; const cov = f / n;
+    if (terra >= 4) toast('terra-' + isl.id, `The forest planted in ${isl.name}'s dry land is making its own rain. Its trees breathe moisture back into the air, adding about ${fmtInt(Math.round(gainP / terra * 2000 / 10) * 10)} mm a year, and the desert is turning green.`);
+    if (melt >= 2) toast('meltforest-' + isl.id, `Meltwater from ${isl.name}'s glaciers runs out across the desert. Trees have taken root along its banks.`);
+    else if (rip >= 3) toast('rip-' + isl.id, `A ribbon of forest grows along the river through ${isl.name}'s desert. Its roots reach the water the rain can't supply.`);
+    [.25, .5].forEach(th => { if (cov >= th) toast(`cov-${th}-${isl.id}`, `Forest now covers ${Math.round(th * 100)}% of ${isl.name}. Seeds carried by wind and animals keep it spreading wherever there is enough water.`); });
+  });
+}
+function meltNear(k) { let m = false; const x = k % COLS, y = (k / COLS) | 0; for (let j = -2; j <= 2 && !m; j++) for (let i = -2; i <= 2; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS && meltC[b * COLS + a]) { m = true; break; } } return m; }
+function evaluateFeatures(t, dt, SL, aNow) {
+  let changed = false;
+  const isSet = (f, k, cond) => {
+    const was = featT[f][k] >= 0;
+    if (cond && !was) { featT[f][k] = t; if (land[k]) pendingNews.push([f, land[k] - 1, k]); changed = true; }
+    else if (!cond && was && TRANSIENT.has(f)) { featT[f][k] = -1; changed = true; }
+  };
+  for (let k = 0; k < N; k++) {
+    if (!land[k]) continue;
+    const x = k % COLS, y = (k / COLS) | 0, la = latOf(cy_(k)), T = temp[k] + aNow * polarAmp(la), P = precip[k], e = elev[k], r = rock[k], R = ROCKS[r];
+    const flat = slope[k] < 4, coastal = dco[k] <= 1.2, iy = iceYears[k], sy = sheetYears[k], ice = iceNow[k];
+    let hiN = 0, oceanN = 0, iceNb = 0, outerEdge = false, upHigh = false, upDrop = 0;
+    nbrs(k, k2 => {
+      if (!land[k2]) oceanN++; else { if (iceYears[k2] < 400) outerEdge = true; if (elev[k2] > 500 && iceYears[k2] > 30000) upHigh = true; }
+      if (elev[k2] > e) hiN++; if (iceYears[k2] > 15000) iceNb++; if (rcv[k2] === k) upDrop = Math.max(upDrop, elev[k2] - e);
+    });
+    const peak = hiN === 0;
+    // glacial
+    isSet(F.ICESHEET, k, ice && iceKind[k] === 1);
+    isSet(F.ICECAP, k, ice && iceKind[k] === 2);
+    isSet(F.GLACIER, k, ice && e > 900 && slope[k] > 6);
+    isSet(F.CIRQUE, k, e > 1400 && iy > 15000 && !peak && hiN >= 1 && hiN <= 3 && hash3(x, y, 48) < .5);
+    isSet(F.HORN, k, peak && e > 2000 && iy > 50000 && iceNb >= 3);
+    const ridgeEW = x > 0 && x < COLS - 1 && e > elev[k - 1] + 150 && e > elev[k + 1] + 150, ridgeNS = y > 0 && y < ROWS - 1 && e > elev[k - COLS] + 150 && e > elev[k + COLS] + 150;
+    isSet(F.ARETE, k, !peak && (ridgeEW || ridgeNS) && e > 1700 && iy > 40000);
+    isSet(F.MORAINE, k, iy > 5000 && outerEdge && !ice);
+    isSet(F.FJORD, k, coastal && iy > 30000 && upHigh && !ice && SL > -40);
+    isSet(F.DRUMLIN, k, sy > 20000 && !ice && e < 900 && r !== 1 && r !== 2 && hash3(x, y, 41) < .6);
+    isSet(F.ESKER, k, sy > 20000 && !ice && acc[k] > RTHR * .5 && e < 1000);
+    isSet(F.KAME, k, iy > 2000 && iy < 20000 && !ice && e < 800 && hash3(x, y, 42) < .35);
+    // wetlands
+    const wy = wetYears[k], forest = veg[k] > .4 || tden[k] > 2;
+    let open = 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS && !land[b * COLS + a]) open++; }
+    isSet(F.MANGROVE, k, coastal && T > 20 && sst[okAt(cx_(k), cy_(k))] > 23 && flat && open <= 11 && coastYears[k] > 1000 && P > .2);
+    isSet(F.SWAMP, k, wy > 3000 && T > 14 && P > .55 && forest && !coastal);
+    isSet(F.BOG, k, wy > 8000 && T > -3 && T < 9 && P > .45 && R.perm < .3);
+    isSet(F.FEN, k, wy > 3000 && T > -3 && T < 12 && (R.perm >= .5 || r === 3) && (riverC[k] || lake[k] || P > .5) && !has(F.BOG, k));
+    isSet(F.MARSH, k, wy > 2000 && T > 2 && T < 27 && !forest && (coastal || riverC[k] || lake[k]) && !has(F.MANGROVE, k));
+    // karst: soluble limestone + rain + time
+    const ky = karstYears[k];
+    isSet(F.SINKHOLE, k, r === 3 && ky > 20000 && slope[k] < 10 && hash3(x, y, 43) < .5);
+    isSet(F.CAVE, k, r === 3 && ky > 150000 && e > 100 && slope[k] > 2 && hash3(x, y, 44) < .4);
+    isSet(F.CENOTE, k, r === 3 && ky > 60000 && T > 20 && e < 180 && dco[k] <= 6 && hash3(x, y, 45) < .4);
+    isSet(F.KTOWER, k, r === 3 && ky > 1.2e6 && T > 20 && P > .6);
+    // desert: aridity lets the wind take over
+    const ay = aridYears[k], sand = r === 4 || dco[k] <= 4 || riverYears[k] > 0 || playaC[k];
+    isSet(F.PLAYA, k, playaC[k] && ay > 2000);
+    isSet(F.DUNE, k, ay > 8000 && sand && slope[k] < 8 && !playaC[k]);
+    isSet(F.YARDANG, k, ay > 100000 && (r === 5 || r === 4 || r === 3) && wstrong[k] > .75 && slope[k] < 8 && !has(F.DUNE, k));
+    // volcanic & tectonic
+    const vy = volcYears[k], vent = actv[k] && hash3(x, y, 31) < .15;
+    if (!has(F.CALDERA, k)) isSet(F.VOLCANO, k, vent && vy > 50000);
+    isSet(F.LAVA, k, (actv[k] === 2 || actv[k] === 3) && r === 2 && vy > 100000 && !has(F.VOLCANO, k));
+    let heat = false; for (let j = -2; j <= 2 && !heat; j++) for (let i = -2; i <= 2; i++) { const a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < COLS && b < ROWS && actv[b * COLS + a]) { heat = true; break; } }
+    isSet(F.GEYSER, k, heat && P > .3 && R.perm >= .4 && !ice && hash3(x, y, 46) < .2 && vy > 20000);
+    isSet(F.RIFT, k, dDiv[k] < 1.5 && t > 30000);
+    isSet(F.FAULT, k, dTr[k] < 1 && bType[k] === 3);
+    isSet(F.FOLD, k, (dCC[k] < 4 || dOC[k] < 5) && e > 1500);
+    // rivers
+    isSet(F.RIVER, k, riverC[k]);
+    isSet(F.LAKE, k, lake[k] && !playaC[k] && !ice);
+    isSet(F.DELTA, k, riverC[k] && oceanN > 0 && acc[k] > RTHR * 2 && slope[k] < 4 && deltaYears[k] > 5000);
+    isSet(F.OXBOW, k, riverC[k] && acc[k] > RTHR * 3 && slope[k] < 2 && e < 300 && riverYears[k] > 3000 && hash3(x, y, 47) < .35);
+    isSet(F.AFAN, k, riverC[k] && upDrop > 500 && slope[k] < 10 && P < .5 && riverYears[k] > 10000);
+    isSet(F.CANYON, k, riverC[k] && R.hard > .3 && ((slope[k] > 8 && e > 700 && riverYears[k] > 1e6) || (slope[k] > 20 && riverYears[k] > 2e5)));
+  }
+  // caldera-forming supereruptions are rare (about once per 30 million years per volcano) and need the sticky,
+  // gas-rich magma of continental arcs and hotspots under continents
+  const pErupt = 1 - Math.exp(-dt / 3e7);
+  for (let k = 0; k < N; k++) if (has(F.VOLCANO, k) && (actv[k] === 1 || actv[k] === 2) && dco[k] > 1.5 && t - featT[F.VOLCANO][k] > 2e5 && hash3(k, Math.floor(t), 77) < pErupt) {
+    featT[F.CALDERA][k] = t; featT[F.VOLCANO][k] = -1; if (land[k]) pendingNews.push([F.CALDERA, land[k] - 1, k]); changed = true;
+  }
+  // ergs: dune fields large enough to be sand seas
+  const seen = U8();
+  for (let k = 0; k < N; k++) {
+    if (!has(F.DUNE, k) || seen[k]) continue; const q = [k], cells = []; seen[k] = 1;
+    while (q.length) { const c = q.pop(); cells.push(c); nbrs(c, k2 => { if (has(F.DUNE, k2) && !seen[k2]) { seen[k2] = 1; q.push(k2); } }, false); }
+    const big = cells.length >= 6;
+    cells.forEach(c => { const was = has(F.ERG, c); if (big && !was) { featT[F.ERG][c] = t; changed = true; if (c === cells[0] && land[c]) pendingNews.push([F.ERG, land[c] - 1, c]); } else if (!big && was) { featT[F.ERG][c] = -1; changed = true; } });
+  }
+  if (changed) featDirty = true;
+}
+
+// ---------- hotspot island chains ----------
+function hotspots(t0, t1) {
+  HOTSPOTS.forEach((h, hi) => {
+    const k = cellAt(h.x, h.y);
+    if (k >= 0 && !land[k] && t1 - h.lastSpawn > 3e6 && t1 > 2e5) {
+      h.lastSpawn = t1; h.n++;
+      const r = 2.2 + hash3(hi, h.n, 5) * 1.2, pts = [];
+      for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; pts.push([h.x + Math.cos(a) * r * (1 + .25 * vnoise(i / 4, h.n, hi)), h.y + Math.sin(a) * r * (1 + .25 * vnoise(i / 4, h.n + 9, hi))]); }
+      const { base, coast, normals } = coastalize(pts, hi * 100 + h.n, .6, .12);
+      const isl = prepIsland({ id: nextId++, seed: hi * 100 + h.n, k: .12, base, coast, normals, name: genName(hi * 977 + h.n), named: true, labels: [], born: performance.now() / 1000, kind: 'volcanic', birth: t1, hot: hi, r0: r, cx: h.x, cy: h.y });
+      isl.rel = coast.map(p => [p[0] - h.x, p[1] - h.y]); isl.relB = base.map(p => [p[0] - h.x, p[1] - h.y]);
+      islands.push(isl); landChanged = true; geoDirty = true;
+      toast('hot-isl-' + isl.id, `${isl.name} rose from the sea. A plume of hot mantle rock beneath the plate built a new volcano.`);
+    }
+  });
+  islands.forEach(isl => {
+    if (isl.kind !== 'volcanic') return;
+    const P = plateAt(isl.cx, isl.cy), dt = t1 - t0;
+    isl.cx += P.vx * PX_PER_CM * dt; isl.cy += P.vy * PX_PER_CM * dt;
+    const age = t1 - isl.birth, sc = age < 4e6 ? 1 : Math.max(0, 1 - (age - 4e6) / 9e6);   // cools, sinks and erodes once it leaves the plume
+    isl.coast = isl.rel.map(p => [isl.cx + p[0] * sc, isl.cy + p[1] * sc]); isl.base = isl.relB.map(p => [isl.cx + p[0] * sc, isl.cy + p[1] * sc]);
+    prepIsland(isl);
+    if (sc <= .08 || isl.cx < FX + 3 || isl.cx > FX + FW - 3 || isl.cy < FY + 3 || isl.cy > FY + FH - 3) {
+      const warm = sst[okAt(isl.cx, isl.cy)] > 20;
+      if (sc <= .08) (warm ? atolls : seamounts).push({ x: isl.cx, y: isl.cy, r: isl.r0 * 1.15, name: isl.name, t: t1 });
+      if (sc <= .08) toast('sink-' + isl.id, warm ? `${isl.name} has sunk beneath the waves. Its coral reef kept growing upward and now rings a lagoon as an atoll.` : `${isl.name} sank beneath seas too cold for coral. It is now a flat-topped seamount.`);
+      isl.dead = true;
+    }
+  });
+  if (islands.some(i => i.dead)) { islands = islands.filter(i => !i.dead); landChanged = true; geoDirty = true; }
+}
+
+// ---------- drawing primitives ----------
+function polyPath(c, p) { c.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); c.closePath(); }
+function openPath(c, p) { c.moveTo(p[0][0], p[0][1]); for (let i = 1; i < p.length; i++) c.lineTo(p[i][0], p[i][1]); }
+function smoothPath(c, p, closed) {
+  const n = p.length; if (n < 2) return;
+  if (closed) {
+    c.moveTo((p[n - 1][0] + p[0][0]) / 2, (p[n - 1][1] + p[0][1]) / 2);
+    for (let i = 0; i < n; i++) { const a = p[i], b = p[(i + 1) % n]; c.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+    c.closePath();
+  } else {
+    c.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < n - 1; i++) { const a = p[i], b = p[i + 1]; c.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+    c.lineTo(p[n - 1][0], p[n - 1][1]);
+  }
+}
+function inkLine(c, p, closed, seed, w = 1.6) {
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = w * ZW;
+  c.beginPath(); smoothPath(c, p, closed); c.stroke();
+  const j = 1.5 * ZW, q = p.map((pt, i) => [pt[0] + (hash3(i, 1, seed) - .5) * j, pt[1] + (hash3(i, 2, seed) - .5) * j]);
+  c.globalAlpha *= .4; c.lineWidth = w * .55 * ZW; c.beginPath(); smoothPath(c, q, closed); c.stroke(); c.restore();
+}
+const NICE = [0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 15, 20, 30, 45, 60, 90];
+const nice = (dpp, minPx) => NICE.find(n => n / dpp >= minPx) || 90;
+const fmtDeg = (v, pos, neg) => { const t = +Math.abs(v).toFixed(2); return Math.abs(v) < 1e-9 ? '0°' : `${t}°${v > 0 ? pos : neg}`; };
+function drawRulers(c) {
+  c.save(); c.strokeStyle = RULE; c.lineWidth = 1; c.beginPath();
+  c.rect(FX, FY, FW, FH);
+  c.moveTo(227, FY); c.lineTo(227, FY + FH); c.moveTo(826, FY); c.lineTo(826, FY + FH);
+  c.moveTo(FX, 155); c.lineTo(FX + FW, 155); c.moveTo(FX, 551); c.lineTo(FX + FW, 551);
+  c.stroke();
+  c.font = `400 9.5px ${FONT}`; c.fillStyle = MUTED; c.textBaseline = 'middle';
+  const v = view();
+  let dpp = 360 / (FW * cam.z), mi = nice(dpp, 22), ma = [2, 3, 5, 6, 10].map(m => mi * m).find(m => m / dpp >= 70) || mi * 10;
+  c.beginPath(); c.textAlign = 'center';
+  for (let l = Math.ceil(lonOf(v.x0) / mi) * mi; l <= lonOf(v.x1) + 1e-9; l += mi) {
+    const x = w2d([xOfLon(l), 0])[0], major = Math.abs(l / ma - Math.round(l / ma)) < 1e-6, h = major ? 12 : 6;
+    c.moveTo(x, FY - h); c.lineTo(x, FY); c.moveTo(x, FY + FH); c.lineTo(x, FY + FH + h);
+    if (major && x > FX + 10 && x < FX + FW - 10) { const t = fmtDeg(+l.toFixed(4), 'E', 'W'); if (x < 990) c.fillText(t, x, FY - 19); c.fillText(t, x, FY + FH + 20); }
+  }
+  dpp = 160 / (FH * cam.z); mi = nice(dpp, 22); ma = [2, 3, 5, 6, 10].map(m => mi * m).find(m => m / dpp >= 60) || mi * 10;
+  for (let l = Math.ceil(latOf(v.y1) / mi) * mi; l <= latOf(v.y0) + 1e-9; l += mi) {
+    const y = w2d([0, yOfLat(l)])[1], major = Math.abs(l / ma - Math.round(l / ma)) < 1e-6, h = major ? 12 : 6;
+    c.moveTo(FX - h, y); c.lineTo(FX, y); c.moveTo(FX + FW, y); c.lineTo(FX + FW + h, y);
+    if (major && y > FY + 8 && y < FY + FH - 8) { const t = fmtDeg(+l.toFixed(4), 'N', 'S'); c.textAlign = 'right'; c.fillText(t, FX - 15, y); c.textAlign = 'left'; c.fillText(t, FX + FW + 15, y); }
+  }
+  c.stroke();
+  const latC = latOf(v.y0 + (v.y1 - v.y0) / 2), kmPerPx = 40000 * Math.cos(latC * Math.PI / 180) / (FW * cam.z);
+  const target = 110 * kmPerPx, p10 = Math.pow(10, Math.floor(Math.log10(target))), km = [1, 2, 5].map(m => m * p10).filter(x => x <= target).pop() || p10, len = km / kmPerPx;
+  const bx0 = FX + FW - 24 - len, by0 = FY + FH - 22;
+  c.strokeStyle = INK; c.lineWidth = 1.2; c.beginPath(); c.moveTo(bx0, by0 - 4); c.lineTo(bx0, by0); c.lineTo(bx0 + len, by0); c.lineTo(bx0 + len, by0 - 4); c.moveTo(bx0 + len / 2, by0 - 2.5); c.lineTo(bx0 + len / 2, by0); c.stroke();
+  c.fillStyle = INK; c.textAlign = 'center'; c.font = `400 11px ${FONT}`; c.fillText(`${km.toLocaleString()} km`, bx0 + len / 2, by0 - 11);
+  c.restore();
+}
+function drawGuides(c) {
+  c.save(); c.setLineDash([2, 6]); c.strokeStyle = RULE; c.globalAlpha = .55; c.lineWidth = .8;
+  c.font = `300 10px ${FONT}`; c.fillStyle = MUTED; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+  [[66.5, 'Arctic Circle'], [23.4, 'Tropic of Cancer'], [0, 'Equator'], [-23.4, 'Tropic of Capricorn'], [-66.5, 'Antarctic Circle']].forEach(([l, n]) => {
+    const y = w2d([0, yOfLat(l)])[1]; if (y < FY + 2 || y > FY + FH - 2) return;
+    c.beginPath(); c.moveTo(FX, y); c.lineTo(FX + FW, y); c.stroke(); c.fillText(n, FX + 8, y - 4);
+  });
+  c.restore();
+}
+function drawIsland(c, isl, now, live) {
+  const age = now - isl.born;
+  let pts = isl.coast, sc = 1, wa = 1, fillA = 1;
+  if (live) {
+    if (age < MORPH) { const k = ease(Math.max(0, age) / MORPH); pts = isl.coast.map((p, i) => [isl.base[i][0] + (p[0] - isl.base[i][0]) * k, isl.base[i][1] + (p[1] - isl.base[i][1]) * k]); fillA = k; sc = .97; }
+    else if (age < MORPH + POP) { const k = (age - MORPH) / POP; sc = 1 + .045 * Math.sin(k * Math.PI * 1.5) * (1 - k); }
+    wa = clamp((age - MORPH - POP * .3) / WASH, 0, 1);
+  }
+  const b = isl.bbox;
+  c.save();
+  if (sc !== 1) { c.translate(isl.center[0], isl.center[1]); c.scale(sc, sc); c.translate(-isl.center[0], -isl.center[1]); }
+  c.beginPath(); smoothPath(c, pts, true);
+  c.fillStyle = PAPER; c.fill();
+  c.save(); c.clip();
+  c.globalAlpha = fillA; c.fillStyle = LAND; c.fillRect(b.minX - 5, b.minY - 5, b.maxX - b.minX + 10, b.maxY - b.minY + 10);
+  c.imageSmoothingEnabled = true;
+  if (wa > 0) { c.globalAlpha = .92 * wa; c.drawImage(layers.rocks ? rcvs : bcv, FX, FY, COLS * C, ROWS * C); c.globalAlpha = wa; c.drawImage(ocv, FX, FY, COLS * C, ROWS * C); }
+  const zq = Math.pow(2, Math.round(Math.log2(cam.z))), hs = 6.5 / zq, sg = 22 / cam.z, v = view();
+  const y0 = Math.max(b.minY, v.y0), y1 = Math.min(b.maxY, v.y1), x0 = Math.max(b.minX, v.x0) - sg, x1 = Math.min(b.maxX, v.x1) + sg;
+  c.globalAlpha = .15 * fillA; c.strokeStyle = INK; c.lineWidth = .8 * ZW; c.beginPath();
+  for (let r = Math.floor(y0 / hs); r * hs < y1; r++) { const y = r * hs; c.moveTo(x0, y); for (let x = Math.floor(x0 / sg) * sg; x < x1; x += sg) c.lineTo(x, y + (hash3(r, Math.round(x / sg), isl.seed) - .5) * 1.6 * ZW); }
+  c.stroke();
+  c.restore();
+  inkLine(c, pts, true, isl.seed, isl.kind === 'volcanic' ? 1.3 : 1.7);
+  if (live && age < MORPH) { c.save(); c.globalAlpha = 1 - ease(age / MORPH); c.setLineDash([3 * ZW, 5 * ZW]); c.strokeStyle = INK; c.lineWidth = 1.2 * ZW; c.beginPath(); smoothPath(c, isl.base, true); c.stroke(); c.restore(); }
+  c.restore();
+}
+function drawRivers(c, list) {
+  list.forEach(r => {
+    const n = r.pts.length, minW = .7 * ZW;
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+    if (r.canal) {
+      c.beginPath(); smoothPath(c, r.pts, false);
+      c.strokeStyle = INK; c.lineWidth = Math.max(12 * r.k, 4 * ZW); c.stroke();
+      c.strokeStyle = WATER; c.lineWidth = Math.max(9.6 * r.k, 2.4 * ZW); c.stroke();
+    } else {
+      for (let pass = 0; pass < 2; pass++) {
+        c.strokeStyle = pass ? WATER : INK;
+        for (let i = 1; i < n; i++) { const w = Math.max(minW, (1.4 + 3.6 * (i / n)) * r.k); c.lineWidth = pass ? w : w + 2 * ZW; c.beginPath(); c.moveTo(r.pts[i - 1][0], r.pts[i - 1][1]); c.lineTo(r.pts[i][0], r.pts[i][1]); c.stroke(); }
+      }
+    }
+    c.restore();
+  });
+}
+// rivers found by the water model, thickening downstream as tributaries join
+function drawRiverNet(c) {
+  c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+  for (let pass = 0; pass < 2; pass++) {
+    c.strokeStyle = pass ? WATER : INK;
+    riverLines.forEach(r => {
+      const p = r.pts, n = p.length; if (n < 2) return;
+      for (let i = 0; i < n - 1; i++) {
+        const w = clamp(.5 + Math.log(1 + r.ws[i] / RTHR) * .9, .5, 3.6) * ZW;
+        const a = i === 0 ? p[0] : [(p[i - 1][0] + p[i][0]) / 2, (p[i - 1][1] + p[i][1]) / 2], m = [(p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2];
+        c.lineWidth = pass ? w : w + 1.3 * ZW; c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(p[i][0], p[i][1], i === n - 2 ? p[n - 1][0] : m[0], i === n - 2 ? p[n - 1][1] : m[1]); c.stroke();
+      }
+    });
+  }
+  c.restore();
+}
+function drawMountain(c, m) {
+  const { x, y, s, seed } = m, px = x + (hash3(seed, 1, 7) - .5) * s * .3, py = y - s * 1.2, L = [x - s, y], R = [x + s * .95, y];
+  c.strokeStyle = INK; c.lineJoin = 'round'; c.lineCap = 'round';
+  if (s * cam.z < 5) { c.lineWidth = .8 * ZW; c.beginPath(); c.moveTo(L[0], L[1]); c.lineTo(px, py); c.lineTo(R[0], R[1]); c.stroke(); return; }
+  const lw = Math.min(1.3 * ZW, s * .12);
+  c.beginPath(); c.moveTo(L[0], L[1]); c.quadraticCurveTo(x - s * .45, y - s * .72, px, py); c.quadraticCurveTo(x + s * .5, y - s * .62, R[0], R[1]); c.closePath();
+  c.fillStyle = PAPER; c.fill();
+  c.lineWidth = lw; c.beginPath(); c.moveTo(L[0], L[1]); c.quadraticCurveTo(x - s * .45, y - s * .72, px, py); c.quadraticCurveTo(x + s * .5, y - s * .62, R[0], R[1]); c.stroke();
+  c.lineWidth = lw * .7; c.beginPath(); c.moveTo(px, py); c.lineTo(px + s * .12, y - s * .78); c.lineTo(px - s * .04, y - s * .46); c.lineTo(px + s * .1, y - s * .12);
+  for (let k = 1; k <= 4; k++) { const t = k / 5.2, ex = px + (R[0] - px) * t * .92, ey = py + (R[1] - py) * t; c.moveTo(ex - s * .08, ey + s * .1); c.lineTo(ex - s * .22, ey + s * .34 * (1 - t * .4)); }
+  c.stroke();
+  if (m.snow) { c.fillStyle = ICEC; c.beginPath(); c.moveTo(px, py); c.lineTo(px - s * .22, py + s * .32); c.lineTo(px - s * .05, py + s * .24); c.lineTo(px + s * .08, py + s * .34); c.lineTo(px + s * .2, py + s * .26); c.closePath(); c.fill(); c.lineWidth = lw * .6; c.stroke(); }
+}
+function drawTree(c, t) {
+  const { x, y, seed } = t; const s = t.s * (t.t0 === undefined ? 1 : clamp(.45 + (simT - t.t0) / 400, .45, 1));
+  let leaf = TREEC;
+  if (t.dyingRt) { const a = performance.now() / 1000 - t.dyingRt; if (a > WILT) { drawSnag(c, x, y, s); return; } leaf = a < WILT * .5 ? '#c4c27a' : '#b99a6a'; }
+  if (s * cam.z < 4) { c.fillStyle = '#8fae58'; c.fillRect(x - s * .4, y - s * 1.2, s * .8, s * .8); return; }
+  const lw = Math.min(ZW, s * .14); c.strokeStyle = INK; c.lineWidth = lw;
+  c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - s * .7); c.stroke();
+  const cy = y - s * 1.05, r = s * .55; c.beginPath();
+  for (let i = 0; i <= 14; i++) { const a = i / 14 * Math.PI * 2, rr = r * (1 + .12 * Math.sin(a * 5 + seed)); const X = x + Math.cos(a) * rr, Y = cy + Math.sin(a) * rr * 1.12; i ? c.lineTo(X, Y) : c.moveTo(X, Y); }
+  c.closePath(); c.fillStyle = leaf; c.fill(); c.stroke();
+}
+function drawSnag(c, x, y, s) {
+  c.strokeStyle = '#8a7666'; c.lineWidth = Math.min(ZW, s * .14); c.lineCap = 'round'; c.beginPath();
+  c.moveTo(x, y); c.lineTo(x, y - s * 1.3); c.moveTo(x, y - s * .7); c.lineTo(x - s * .35, y - s * 1.05); c.moveTo(x, y - s * .9); c.lineTo(x + s * .32, y - s * 1.2); c.stroke();
+}
+// natural forest drawn from the living cover: conifers where it's cold, flat-topped acacias in warm dry country, broadleaf elsewhere
+function drawForests(c) {
+  const s = 9 * ZW, aN = climA(simT);
+  forMarks(13, (k, x, y, ph) => {
+    const v = veg[k]; if (v < .06 || hash3(k, 4, 9) > v * 1.05) return;
+    if (vegTrend[k] < -.004 && cap[k] < v - .08) { drawSnag(c, x, y, s * .9); return; }
+    const T = tBase[k] + aN * polarAmp(latOf(y)), P = precip[k] + wbonus[k];
+    c.lineWidth = Math.min(ZW, s * .12); c.strokeStyle = INK;
+    if (T < 6) { c.beginPath(); c.moveTo(x, y - s * 1.5); c.lineTo(x - s * .42, y - s * .25); c.lineTo(x + s * .42, y - s * .25); c.closePath(); c.fillStyle = '#7f9e62'; c.fill(); c.stroke(); c.beginPath(); c.moveTo(x, y - s * .25); c.lineTo(x, y); c.stroke(); }
+    else if (P < .4 && T > 18) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - s * .8); c.stroke(); c.beginPath(); c.ellipse(x, y - s * .9, s * .55, s * .2, 0, 0, 6.29); c.fillStyle = '#9fb46a'; c.fill(); c.stroke(); }
+    else drawTree(c, { x, y, s: s * (.8 + ph / 15), seed: ph * 10 });
+  });
+}
+function drawVolcano(c, v) {
+  const { x, y } = v, s = v.s, lw = Math.min(1.4 * ZW, s * .08);
+  c.beginPath(); c.moveTo(x - s, y); c.quadraticCurveTo(x - s * .5, y - s * .6, x - s * .28, y - s * 1.05); c.lineTo(x + s * .28, y - s * 1.05); c.quadraticCurveTo(x + s * .5, y - s * .6, x + s, y); c.closePath();
+  c.fillStyle = PAPER; c.fill(); c.strokeStyle = INK; c.lineWidth = lw; c.stroke();
+  c.beginPath(); c.ellipse(x, y - s * 1.05, s * .28, s * .12, 0, 0, Math.PI * 2); c.fillStyle = LAVA; c.fill(); c.stroke();
+  c.strokeStyle = LAVA; c.beginPath(); c.moveTo(x - s * .1, y - s); c.quadraticCurveTo(x - s * .3, y - s * .6, x - s * .2, y - s * .3); c.moveTo(x + s * .15, y - s); c.quadraticCurveTo(x + s * .3, y - s * .55, x + s * .4, y - s * .35); c.stroke();
+}
+function drawHome(c, h) {
+  const { x, y } = h, k = h.s; c.fillStyle = PAPER; c.strokeStyle = INK; c.lineWidth = Math.min(1.2 * ZW, k * .9); c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(x - 7 * k, y); c.lineTo(x - 7 * k, y - 7 * k); c.lineTo(x, y - 13 * k); c.lineTo(x + 7 * k, y - 7 * k); c.lineTo(x + 7 * k, y); c.closePath(); c.fill(); c.stroke();
+  c.beginPath(); c.rect(x - 1.6 * k, y - 4.5 * k, 3.2 * k, 4.5 * k); c.stroke();
+}
+
+// ---------- landform glyphs (following standard map symbols where they exist) ----------
+function glyph(c, f, x, y, s, k) {
+  const z = ZW; c.lineWidth = 1.05 * z; c.strokeStyle = INK; c.fillStyle = PAPER; c.lineCap = 'round'; c.lineJoin = 'round'; c.setLineDash([]);
+  const B = () => c.beginPath(), S = () => c.stroke(), Fi = col => { c.fillStyle = col; c.fill(); };
+  const w = windAt(latOf(y)), wa = Math.atan2(w[1], w[0]);
+  switch (f) {
+    case F.VOLCANO: drawVolcano(c, { x, y: y + s * .5, s: s * .8 }); break;
+    case F.CALDERA: B(); c.ellipse(x, y, s * .9, s * .55, 0, 0, 6.29); S(); B(); c.ellipse(x, y, s * .55, s * .3, 0, 0, 6.29); Fi(WATER); S(); break;
+    case F.GEYSER: B(); c.arc(x, y + s * .4, s * .25, 0, 6.29); Fi(WATER); S(); B(); c.moveTo(x, y + s * .2); c.quadraticCurveTo(x - s * .3, y - s * .3, x, y - s * .9); c.moveTo(x, y + s * .2); c.quadraticCurveTo(x + s * .35, y - s * .4, x + s * .1, y - s); S(); break;
+    case F.HORN: B(); c.moveTo(x - s * .8, y + s * .5); c.lineTo(x, y - s * .9); c.lineTo(x + s * .8, y + s * .5); Fi(PAPER); S(); B(); c.moveTo(x, y - s * .9); c.lineTo(x - s * .1, y + s * .5); S(); B(); c.moveTo(x, y - s * .9); c.lineTo(x - s * .2, y - s * .5); c.lineTo(x + s * .22, y - s * .5); c.closePath(); Fi(ICEC); S(); break;
+    case F.CENOTE: B(); c.arc(x, y, s * .45, 0, 6.29); Fi(WATER); S(); B(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; c.moveTo(x + Math.cos(a) * s * .5, y + Math.sin(a) * s * .5); c.lineTo(x + Math.cos(a) * s * .75, y + Math.sin(a) * s * .75); } S(); break;
+    case F.CAVE: B(); c.moveTo(x - s * .55, y + s * .4); c.quadraticCurveTo(x - s * .5, y - s * .55, x, y - s * .55); c.quadraticCurveTo(x + s * .5, y - s * .55, x + s * .55, y + s * .4); c.closePath(); Fi(INK); break;
+    case F.SINKHOLE: B(); c.arc(x, y, s * .4, 0, 6.29); S(); B(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; c.moveTo(x + Math.cos(a) * s * .4, y + Math.sin(a) * s * .4); c.lineTo(x + Math.cos(a) * s * .18, y + Math.sin(a) * s * .18); } S(); break;
+    case F.KTOWER: for (let i = -1; i <= 1; i++) { const h = s * (1.1 - Math.abs(i) * .3), bx_ = x + i * s * .42; B(); c.moveTo(bx_ - s * .17, y + s * .5); c.lineTo(bx_ - s * .17, y + s * .5 - h); c.quadraticCurveTo(bx_, y + s * .5 - h - s * .25, bx_ + s * .17, y + s * .5 - h); c.lineTo(bx_ + s * .17, y + s * .5); Fi(PAPER); S(); } break;
+    case F.CIRQUE: B(); c.arc(x, y, s * .55, Math.PI * 1.05, Math.PI * 1.95, false); S(); B(); for (let i = 0; i < 5; i++) { const a = Math.PI * (1.1 + i * .2); c.moveTo(x + Math.cos(a) * s * .55, y + Math.sin(a) * s * .55); c.lineTo(x + Math.cos(a) * s * .8, y + Math.sin(a) * s * .8); } S(); break;
+    case F.ARETE: B(); c.moveTo(x - s * .9, y + s * .1); c.lineTo(x - s * .45, y - s * .3); c.lineTo(x, y); c.lineTo(x + s * .45, y - s * .35); c.lineTo(x + s * .9, y); S(); B(); for (let i = -2; i <= 2; i++) { c.moveTo(x + i * s * .35, y - s * .1); c.lineTo(x + i * s * .35 - s * .1, y + s * .3); } S(); break;
+    case F.DELTA: { let ang = 0; nbrs(k, (k2, dx, dy) => { if (!land[k2]) ang = Math.atan2(dy, dx); }); B(); for (let i = -2; i <= 2; i++) { const a = ang + i * .35; c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a) * s * .5 + Math.sin(a) * s * .15, y + Math.sin(a) * s * .5, x + Math.cos(a) * s * 1.1, y + Math.sin(a) * s * 1.1); } c.strokeStyle = COLD; S(); break; }
+    case F.AFAN: { let ang = 0; const r = rcv[k]; if (r >= 0) ang = Math.atan2(cy_(r) - y, cx_(r) - x); B(); for (let i = -3; i <= 3; i++) { const a = ang + i * .22; c.moveTo(x, y); c.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s); } S(); B(); c.arc(x, y, s, ang - .7, ang + .7); S(); break; }
+    case F.OXBOW: B(); c.ellipse(x + s * .3, y, s * .55, s * .32, .4, Math.PI * .1, Math.PI * 1.4); c.lineWidth = 2.4 * z; S(); c.lineWidth = 1.2 * z; c.strokeStyle = WATER; S(); break;
+    case F.CANYON: B(); for (let i = -2; i <= 2; i++) { c.moveTo(x - s * .55, y + i * s * .22); c.lineTo(x - s * .2, y + i * s * .22 + s * .08); c.moveTo(x + s * .55, y + i * s * .22); c.lineTo(x + s * .2, y + i * s * .22 + s * .08); } S(); break;
+    case F.FJORD: { let ang = 0; nbrs(k, (k2, dx, dy) => { if (!land[k2]) ang = Math.atan2(-dy, -dx); }); const ex = x + Math.cos(ang) * s * 1.3, ey = y + Math.sin(ang) * s * 1.3, px = -Math.sin(ang) * s * .18, py = Math.cos(ang) * s * .18; B(); c.moveTo(x - Math.cos(ang) * s * .5 + px, y - Math.sin(ang) * s * .5 + py); c.lineTo(ex + px * .3, ey + py * .3); c.lineTo(ex - px * .3, ey - py * .3); c.lineTo(x - Math.cos(ang) * s * .5 - px, y - Math.sin(ang) * s * .5 - py); Fi(WATER); S(); break; }
+    case F.GLACIER: B(); c.moveTo(x - s * .35, y - s * .7); c.quadraticCurveTo(x - s * .45, y + s * .2, x - s * .15, y + s * .7); c.lineTo(x + s * .25, y + s * .7); c.quadraticCurveTo(x + s * .45, y, x + s * .35, y - s * .7); c.closePath(); Fi(ICEC); S(); B(); for (let i = 0; i < 3; i++) { c.moveTo(x - s * .2, y - s * .3 + i * s * .3); c.lineTo(x + s * .2, y - s * .2 + i * s * .3); } c.strokeStyle = SNOWC; S(); break;
+    case F.ESKER: B(); for (let i = 0; i <= 10; i++) { const u = i / 10 - .5, X = x + u * s * 1.8, Y = y + Math.sin(u * 8 + k) * s * .25; i ? c.lineTo(X, Y) : c.moveTo(X, Y); } c.lineWidth = 2.2 * z; S(); c.setLineDash([1 * z, 2.5 * z]); c.lineWidth = .9 * z; c.strokeStyle = PAPER; S(); c.setLineDash([]); break;
+    case F.DRUMLIN: { const a = Math.atan2(iceFlowY[k], iceFlowX[k]) + Math.PI; c.save(); c.translate(x, y); c.rotate(a); for (let i = -1; i <= 1; i += 2) { B(); c.ellipse(i * s * .15, i * s * .32, s * .45, s * .17, 0, 0, 6.29); Fi(PAPER); S(); } c.restore(); break; }
+    case F.KAME: B(); c.moveTo(x - s * .6, y + s * .3); c.quadraticCurveTo(x, y - s * .7, x + s * .6, y + s * .3); Fi(PAPER); S(); c.fillStyle = INK; for (let i = 0; i < 4; i++) c.fillRect(x - s * .3 + i * s * .2, y + (i % 2) * s * .1, z * 1.1, z * 1.1); break;
+    case F.MORAINE: c.fillStyle = INK; for (let i = 0; i < 6; i++) { const a = Math.PI * (1.15 + i * .14); B(); c.arc(x + Math.cos(a) * s * .7, y + s * .5 + Math.sin(a) * s * .7, z * 1.2, 0, 6.29); c.fill(); } break;
+    case F.MANGROVE: B(); c.arc(x, y - s * .25, s * .35, 0, 6.29); Fi('#7aa35a'); S(); B(); for (let i = -2; i <= 2; i++) { c.moveTo(x, y); c.quadraticCurveTo(x + i * s * .2, y + s * .1, x + i * s * .3, y + s * .5); } S(); break;
+    case F.SWAMP: case F.MARSH: case F.BOG: case F.FEN: {
+      B(); for (let i = -1; i <= 1; i++) { c.moveTo(x + i * s * .45 - s * .2, y + s * .35); c.lineTo(x + i * s * .45 + s * .2, y + s * .35); } c.strokeStyle = f === F.FEN ? COLD : INK; S(); c.strokeStyle = INK;
+      B(); c.moveTo(x, y + s * .25); c.lineTo(x, y - s * .2); c.moveTo(x - s * .18, y + s * .25); c.lineTo(x - s * .28, y - s * .05); c.moveTo(x + s * .18, y + s * .25); c.lineTo(x + s * .28, y - s * .05); S();
+      if (f === F.SWAMP) { B(); c.arc(x + s * .55, y - s * .3, s * .22, 0, 6.29); Fi(TREEC); S(); B(); c.moveTo(x + s * .55, y - s * .08); c.lineTo(x + s * .55, y + s * .3); S(); }
+      if (f === F.BOG) { c.fillStyle = '#8a6e4e'; B(); c.arc(x - s * .5, y - s * .1, s * .1, 0, 6.29); c.fill(); B(); c.arc(x + s * .5, y, s * .08, 0, 6.29); c.fill(); }
+      break; }
+    case F.YARDANG: c.save(); c.translate(x, y); c.rotate(wa); B(); for (let i = -1; i <= 1; i++) { c.moveTo(-s * .7, i * s * .3); c.quadraticCurveTo(0, i * s * .3 - s * .12, s * .7, i * s * .3); } S(); c.restore(); break;
+    case F.DUNE: c.save(); c.translate(x, y); c.rotate(wa); B(); c.moveTo(-s * .2, -s * .6); c.quadraticCurveTo(s * .5, 0, -s * .2, s * .6); c.quadraticCurveTo(s * .15, 0, -s * .2, -s * .6); Fi('#e9cf8e'); S(); c.restore(); break;
+    case F.LAVA: B(); for (let i = 0; i < 3; i++) { const X = x - s * .5 + i * s * .5; c.moveTo(X - s * .2, y + s * .15); c.lineTo(X, y - s * .15); c.lineTo(X + s * .2, y + s * .15); } S(); break;
+    case F.RIFT: B(); c.moveTo(x - s * .9, y - s * .3); c.lineTo(x + s * .9, y - s * .3); c.moveTo(x - s * .9, y + s * .3); c.lineTo(x + s * .9, y + s * .3); for (let i = -2; i <= 2; i++) { c.moveTo(x + i * s * .4, y - s * .3); c.lineTo(x + i * s * .4, y - s * .1); c.moveTo(x + i * s * .4, y + s * .3); c.lineTo(x + i * s * .4, y + s * .1); } S(); break;
+    case F.FAULT: B(); c.moveTo(x - s * .9, y); c.lineTo(x + s * .9, y); S(); B(); c.moveTo(x - s * .5, y - s * .25); c.lineTo(x - s * .1, y - s * .25); c.lineTo(x - s * .22, y - s * .38); c.moveTo(x + s * .5, y + s * .25); c.lineTo(x + s * .1, y + s * .25); c.lineTo(x + s * .22, y + s * .38); S(); break;
+    case F.FOLD: drawMountain(c, { x, y: y + s * .5, s: s * (.6 + Math.min(.6, elev[k] / 6000)), seed: k, snow: temp[k] + climA(simT) * polarAmp(latOf(y)) < 0 }); break;
+    case F.PLAYA: B(); c.ellipse(x, y, s * .7, s * .4, 0, 0, 6.29); c.setLineDash([2 * z, 2 * z]); S(); c.setLineDash([]); B(); c.moveTo(x - s * .3, y - s * .1); c.lineTo(x - s * .1, y + s * .1); c.lineTo(x + s * .15, y - s * .05); c.lineTo(x + s * .35, y + s * .1); S(); break;
+    case F.ICECAP: B(); c.moveTo(x - s * .8, y + s * .3); c.quadraticCurveTo(x, y - s * .8, x + s * .8, y + s * .3); c.closePath(); Fi(ICEC); S(); break;
+    case F.ICESHEET: B(); c.moveTo(x - s * .4, y); c.lineTo(x - s * .1, y + s * .15); c.lineTo(x + s * .2, y - s * .05); c.lineTo(x + s * .45, y + s * .1); c.strokeStyle = SNOWC; S(); break;
+  }
+}
+const GLYPH_ORDER = [F.VOLCANO, F.CALDERA, F.GEYSER, F.HORN, F.CENOTE, F.KTOWER, F.CIRQUE, F.ARETE, F.DELTA, F.AFAN, F.OXBOW, F.CANYON, F.FJORD, F.GLACIER, F.ESKER, F.DRUMLIN, F.KAME, F.MORAINE, F.MANGROVE, F.SWAMP, F.BOG, F.FEN, F.MARSH, F.YARDANG, F.DUNE, F.LAVA, F.RIFT, F.FAULT, F.FOLD, F.PLAYA, F.ICECAP, F.ICESHEET];
+const OCC = 15;
+function drawLandforms(c) {
+  const v = view(), ow = Math.ceil(FW / OCC) + 2, oh = Math.ceil(FH / OCC) + 2, occ = new Uint8Array(ow * oh), s = 11 * ZW;
+  const x0 = Math.max(0, Math.floor((v.x0 - FX) / C) - 1), x1 = Math.min(COLS - 1, Math.ceil((v.x1 - FX) / C) + 1), y0 = Math.max(0, Math.floor((v.y0 - FY) / C) - 1), y1 = Math.min(ROWS - 1, Math.ceil((v.y1 - FY) / C) + 1);
+  const step = Math.max(1, Math.floor(OCC / (C * cam.z) * .5));
+  for (const f of GLYPH_ORDER) {
+    const T = featT[f], st = f <= F.FJORD ? 1 : step;
+    for (let y = y0; y <= y1; y += st) for (let x = x0; x <= x1; x += st) {
+      const k = y * COLS + x; if (T[k] < 0) continue;
+      const wx = cx_(k) + (hash3(x, y, f) - .5) * C * .6, wy = cy_(k) + (hash3(x, y, f + 50) - .5) * C * .6, d = w2d([wx, wy]);
+      const oi = Math.floor((d[0] - FX) / OCC) + 1, oj = Math.floor((d[1] - FY) / OCC) + 1; if (oi < 0 || oj < 0 || oi >= ow || oj >= oh) continue;
+      const o = oj * ow + oi; if (occ[o]) continue; occ[o] = 1;
+      glyph(c, f, wx, wy, s, k);
+    }
+  }
+}
+let featLabels = [];
+function computeFeatLabels() {
+  featLabels = [];
+  const seen = U8();
+  for (let f = 0; f < NF; f++) {
+    if ((!MAJOR_LABEL.has(f) && !POINT_LABEL.has(f)) || f === F.RIVER) continue;
+    seen.fill(0); const T = featT[f];
+    for (let k = 0; k < N; k++) {
+      if (T[k] < 0 || seen[k]) continue; const q = [k], cells = []; seen[k] = 1;
+      while (q.length) { const c = q.pop(); cells.push(c); nbrs(c, k2 => { if (T[k2] >= 0 && !seen[k2]) { seen[k2] = 1; q.push(k2); } }); }
+      let x = 0, y = 0; cells.forEach(c => { x += cx_(c); y += cy_(c); });
+      featLabels.push({ f, x: x / cells.length, y: y / cells.length, n: cells.length, point: POINT_LABEL.has(f) });
+    }
+  }
+  featLabels.sort((a, b) => b.n - a.n);
+}
+function drawLabelsCanvas(c) {
+  const v = view(), boxes = [];
+  c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `italic 400 ${12 * ZW}px ${FONT}`;
+  let drawn = 0;
+  const tryLabel = (text, x, y, sizePx, minPx) => {
+    if (drawn > 22 || sizePx < minPx) return;
+    if (x < v.x0 || x > v.x1 || y < v.y0 || y > v.y1) return;
+    const d = w2d([x, y]), tw = c.measureText(text).width * cam.z;
+    const b = [d[0] - tw / 2 - 4, d[1] - 9, d[0] + tw / 2 + 4, d[1] + 9];
+    if (boxes.some(o => !(b[2] < o[0] || b[0] > o[2] || b[3] < o[1] || b[1] > o[3]))) return;
+    boxes.push(b); drawn++;
+    c.lineWidth = 3 * ZW; c.strokeStyle = PAPER; c.strokeText(text, x, y); c.fillStyle = INK; c.fillText(text, x, y);
+  };
+  featLabels.forEach(l => { const k = cellAt(l.x, l.y); if (k < 0 || !land[k] || inErase([l.x, l.y])) return; tryLabel(FEATS[l.f][1], l.x, l.y + (l.point ? 13 * ZW : 0), Math.sqrt(l.n) * C * cam.z, l.point ? (cam.z >= 3 ? 0 : 1e9) : 26); });
+  geoLabels.forEach(l => tryLabel(l.text, l.x, l.y, Math.sqrt(l.size) * C * cam.z, 18));
+  atolls.forEach(a => tryLabel(`${a.name} Atoll`, a.x, a.y + a.r + 8 * ZW, 99, 0));
+  c.restore();
+}
+
+// ---------- static layer ----------
+let dpr = 1, s = 1, ox = 0, oy = 0, sideW = 0;
+const setBase = c => c.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+function renderStatic(now) {
+  sx.setTransform(1, 0, 0, 1, 0, 0); sx.fillStyle = PAPER; sx.fillRect(0, 0, stc.width, stc.height);
+  setBase(sx); ZW = 1 / cam.z;
+  drawRulers(sx);
+  sx.save(); sx.beginPath(); sx.rect(FX, FY, FW, FH); sx.clip();
+  if (layers.seafloor) { sx.save(); applyCam(sx); sx.globalAlpha = .75; sx.imageSmoothingEnabled = true; sx.drawImage(scv, FX, FY, COLS * C, ROWS * C); sx.globalAlpha = 1; drawSeafloor(sx); sx.restore(); }
+  drawGuides(sx);
+  applyCam(sx);
+  drawReefs(sx);
+  const settled = islands.filter(i => !i._anim && visible(i.bbox));
+  settled.forEach(i => drawIsland(sx, i, now, false));
+  settled.forEach(i => { sx.save(); sx.beginPath(); smoothPath(sx, i.coast, true); sx.clip(); drawRiverNet(sx); drawRivers(sx, rivers.filter(r => r.isl === i.id || r.canal)); sx.restore(); });
+  sx.save(); sx.strokeStyle = SNOWC; sx.lineWidth = .9 * ZW; sx.beginPath();
+  const a = 2.6 * ZW, aN = climA(simT);
+  forMarks(22, (k, x, y) => { if (temp[k] + aN * polarAmp(latOf(y)) < -2 && !iceNow[k]) for (let i = 0; i < 3; i++) { const an = i * Math.PI / 3; sx.moveTo(x - Math.cos(an) * a, y - Math.sin(an) * a); sx.lineTo(x + Math.cos(an) * a, y + Math.sin(an) * a); } });
+  sx.stroke(); sx.restore();
+  drawForests(sx);
+  drawLandforms(sx);
+  const v = view(), m = 30 / cam.z, inV = g => g.x > v.x0 - m && g.x < v.x1 + m && g.y > v.y0 - m && g.y < v.y1 + m;
+  const glyphs = [...mountains.filter(inV).map(g => [g.y, drawMountain, g]), ...trees.filter(inV).map(g => [g.y, drawTree, g]), ...volcanoes.filter(inV).map(g => [g.y, drawVolcano, g]), ...homes.filter(inV).map(g => [g.y, drawHome, g])];
+  glyphs.sort((p, q) => p[0] - q[0]).forEach(([, f, g]) => f(sx, g));
+  drawErased(sx);
+  if (layers.plates) drawPlates(sx);
+  drawLabelsCanvas(sx);
+  if (layers.rocks) drawRockLegend(sx);
+  sx.restore();
+}
+// erased ground: ink the new shoreline (clipped to land), then fill the hole with water
+// the eraser rubs out ground in overlapping irregular blobs, so new shores come out ragged like real coastlines
+function makeBlob(c, r, seed) {
+  const pts = [], n = 26;
+  for (let i = 0; i < n; i++) { const a = i / n * 6.2832, ca = Math.cos(a), sa = Math.sin(a); const rr = r * (1 + .34 * vnoise(ca * 1.7, sa * 1.7, seed) + .16 * vnoise(ca * 4.2, sa * 4.2, seed + 1) + .07 * vnoise(ca * 9, sa * 9, seed + 2)); pts.push([c[0] + ca * rr, c[1] + sa * rr]); }
+  return pts;
+}
+function addBlob(e, p) { const j = e.r * .22, c = [p[0] + (Math.random() - .5) * j, p[1] + (Math.random() - .5) * j]; e.blobs.push({ c, poly: makeBlob(c, e.r * (.75 + Math.random() * .4), (Math.random() * 1e6) | 0) }); e.last = p; }
+function rubTo(e, p) { let d = dist(p, e.last); const st = e.r * .45; while (d >= st) { const q = [e.last[0] + (p[0] - e.last[0]) * st / d, e.last[1] + (p[1] - e.last[1]) * st / d]; addBlob(e, q); d = dist(p, e.last); } }
+function eraseBBox(e) { let a = 1e9, b = -1e9, c = 1e9, d = -1e9; e.blobs.forEach(bl => bl.poly.forEach(q => { a = Math.min(a, q[0]); b = Math.max(b, q[0]); c = Math.min(c, q[1]); d = Math.max(d, q[1]); })); e.bbox = { minX: a, maxX: b, minY: c, maxY: d }; return e; }
+function drawErased(c) {
+  const vis = erases.filter(e => e.blobs.length && visible(e.bbox)); if (!vis.length) return;
+  const blobs = vis.flatMap(e => e.blobs);
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
+  // new shoreline: inked only where the hole meets remaining land
+  c.save(); c.beginPath(); islands.forEach(i => polyPath(c, i.coast)); c.clip();
+  c.strokeStyle = INK; c.lineWidth = 3.4 * ZW; blobs.forEach(b => { c.beginPath(); smoothPath(c, b.poly, true); c.stroke(); });
+  c.globalAlpha = .4; c.lineWidth = 1.8 * ZW; blobs.forEach((b, n) => { c.beginPath(); smoothPath(c, b.poly.map((q, i) => [q[0] + (hash3(i, n, 7) - .5) * 1.6 * ZW, q[1] + (hash3(i, n, 8) - .5) * 1.6 * ZW]), true); c.stroke(); });
+  c.restore();
+  // fill the hole with water — this also wipes the old coastline that ran through it
+  c.fillStyle = PAPER; c.beginPath(); blobs.forEach(b => polyPath(c, b.poly)); c.fill('nonzero');
+  c.restore();
+}
+function inErase(p) { for (const e of erases) { if (!e.bbox || p[0] < e.bbox.minX || p[0] > e.bbox.maxX || p[1] < e.bbox.minY || p[1] > e.bbox.maxY) continue; for (const b of e.blobs) { if (Math.abs(p[0] - b.c[0]) > e.r * 1.7 || Math.abs(p[1] - b.c[1]) > e.r * 1.7) continue; if (pip(p, b.poly)) return true; } } return false; }
+// coast points inside a hole: their wave lines get skipped
+function updateCuts() { islands.forEach(isl => { let any = false; isl.cut = isl.coast.map(q => { const v = erases.length && inErase(q) ? 1 : 0; if (v) any = true; return v; }); if (!any) isl.cut = null; }); }
+function coastRuns(c, pts, cut) {
+  if (!cut) { smoothPath(c, pts, true); return; }
+  const n = pts.length; let s0 = cut.indexOf(1);
+  let run = [];
+  for (let t = 1; t <= n; t++) { const i = (s0 + t) % n; if (cut[i]) { if (run.length > 1) smoothPath(c, run, false); run = []; } else run.push(pts[i]); }
+  if (run.length > 1) smoothPath(c, run, false);
+}
+function forMarks(spacingPx, fn) {
+  const step = Math.max(1, Math.round(spacingPx / (C * cam.z))), v = view();
+  const x0 = Math.max(0, Math.floor((v.x0 - FX) / C / step) * step), x1 = Math.min(COLS - 1, Math.ceil((v.x1 - FX) / C));
+  const y0 = Math.max(0, Math.floor((v.y0 - FY) / C / step) * step), y1 = Math.min(ROWS - 1, Math.ceil((v.y1 - FY) / C));
+  for (let y = y0; y <= y1; y += step) for (let x = x0 + ((y / step) % 2 ? Math.floor(step / 2) : 0); x <= x1; x += step) {
+    const k = y * COLS + x; if (!land[k]) continue;
+    fn(k, FX + (x + .5 + (hash3(x, y, 5) - .5) * step * .5) * C, FY + (y + .5 + (hash3(x, y, 6) - .5) * step * .5) * C, hash3(x, y, 9) * 6);
+  }
+}
+// coral reefs fringe warm-water volcanic islands; when the island sinks the reef remains as an atoll
+function drawReefs(c) {
+  c.save(); c.strokeStyle = INK; c.lineWidth = 1.1 * ZW;
+  islands.forEach(isl => { if (isl.kind !== 'volcanic' || simT - isl.birth < 1e6 || sst[okAt(isl.cx, isl.cy)] < 20) return; c.setLineDash([1.5 * ZW, 2.5 * ZW]); c.beginPath(); c.arc(isl.cx, isl.cy, isl.r0 * 1.25, 0, 6.29); c.stroke(); });
+  c.setLineDash([]);
+  atolls.forEach(a => { c.beginPath(); c.arc(a.x, a.y, a.r, 0, 6.29); c.fillStyle = WATER; c.fill(); c.lineWidth = Math.max(1.4 * ZW, a.r * .25); c.strokeStyle = '#e8dcb8'; c.stroke(); c.lineWidth = .8 * ZW; c.strokeStyle = INK; c.setLineDash([1.5 * ZW, 1.5 * ZW]); c.stroke(); c.setLineDash([]); });
+  c.restore();
+}
+function drawSeafloor(c) {
+  c.save(); c.font = `italic 400 ${11 * ZW}px ${FONT}`; c.textAlign = 'center';
+  const v = view(), step = Math.max(1, Math.round(10 / (C * cam.z)));
+  c.lineWidth = ZW; c.strokeStyle = COLD;
+  for (let y = 0; y < ROWS; y += step) for (let x = 0; x < COLS; x += step) {
+    const k = y * COLS + x, X = cx_(k), Y = cy_(k); if (land[k] || X < v.x0 || X > v.x1 || Y < v.y0 || Y > v.y1) continue;
+    if (elev[k] < -7000) { c.fillStyle = '#3d5d70'; c.fillRect(X - ZW, Y - ZW, 2.2 * ZW, 2.2 * ZW); }
+    else if (dDiv[k] < .8) { c.beginPath(); c.moveTo(X - 2 * ZW, Y - 1.5 * ZW); c.lineTo(X + 2 * ZW, Y - 1.5 * ZW); c.moveTo(X - 2 * ZW, Y + 1.5 * ZW); c.lineTo(X + 2 * ZW, Y + 1.5 * ZW); c.stroke(); }
+    else if (elev[k] > -200 && doc[k] >= 1) { c.fillStyle = COLD; c.fillRect(X - .6 * ZW, Y - .6 * ZW, 1.2 * ZW, 1.2 * ZW); }
+  }
+  const labels = [];
+  for (let k = 0; k < N; k += 97) {
+    if (land[k]) continue; const X = cx_(k), Y = cy_(k); if (X < v.x0 || X > v.x1 || Y < v.y0 || Y > v.y1) continue;
+    if (elev[k] < -7000) labels.push(['Trench, ' + fmtInt(-elev[k]) + ' m', X, Y]); else if (dDiv[k] < 1.2) labels.push(['Mid-ocean ridge', X, Y]);
+    else if (doc[k] >= 1 && elev[k] > -200) labels.push(['Continental shelf', X, Y]); else if (elev[k] <= -200 && elev[k] > -3500) labels.push(['Continental slope', X, Y]);
+    else if (elev[k] < -4300 && dDiv[k] > 6 && dOC[k] > 6) labels.push(['Abyssal plain', X, Y]);
+  }
+  const used = []; c.fillStyle = '#3d5d70';
+  labels.forEach(([t, X, Y]) => { const d = w2d([X, Y]); if (used.length > 12 || used.some(u => Math.abs(u[0] - d[0]) < 130 && Math.abs(u[1] - d[1]) < 40)) return; used.push(d); c.lineWidth = 3 * ZW; c.strokeStyle = PAPER; c.strokeText(t, X, Y); c.fillText(t, X, Y); });
+  seamounts.forEach(sm => { c.beginPath(); c.arc(sm.x, sm.y, sm.r, 0, 6.29); c.setLineDash([2 * ZW, 2 * ZW]); c.strokeStyle = COLD; c.stroke(); c.setLineDash([]); c.fillText('Seamount', sm.x, sm.y + sm.r + 9 * ZW); });
+  c.restore();
+}
+function drawPlates(c) {
+  c.save(); const v = view(); c.lineWidth = 1.2 * ZW;
+  const cols = ['', '#a2453a', '#3d6f8a', '#7a6a4a'];
+  for (let k = 0; k < N; k += 2) {
+    const t = bType[k]; if (!t) continue; const X = cx_(k), Y = cy_(k); if (X < v.x0 - 5 || X > v.x1 + 5 || Y < v.y0 - 5 || Y > v.y1 + 5) continue;
+    c.strokeStyle = cols[t]; c.beginPath(); c.arc(X, Y, (t === 1 ? 1.6 : 1.1) * ZW, 0, 6.29); c.stroke();
+  }
+  c.font = `500 ${11 * ZW}px ${FONT}`; c.textAlign = 'center'; c.fillStyle = INK;
+  PLATES.forEach(p => {
+    const L = 26 * ZW, a = Math.atan2(p.vy, p.vx), ex = p.x + Math.cos(a) * L, ey = p.y + Math.sin(a) * L;
+    c.strokeStyle = INK; c.lineWidth = 1.4 * ZW; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(ex, ey); c.lineTo(ex - Math.cos(a - .5) * 6 * ZW, ey - Math.sin(a - .5) * 6 * ZW); c.moveTo(ex, ey); c.lineTo(ex - Math.cos(a + .5) * 6 * ZW, ey - Math.sin(a + .5) * 6 * ZW); c.stroke();
+    const t = `${p.name} · ${p.sp.toFixed(1)} cm/yr`; c.lineWidth = 3 * ZW; c.strokeStyle = PAPER; c.strokeText(t, p.x, p.y + 12 * ZW); c.fillText(t, p.x, p.y + 12 * ZW);
+  });
+  HOTSPOTS.forEach(h => { c.strokeStyle = '#a2453a'; c.lineWidth = 1.2 * ZW; for (let r = 1; r <= 3; r++) { c.beginPath(); c.arc(h.x, h.y, r * 3 * ZW, 0, 6.29); c.stroke(); } c.lineWidth = 3 * ZW; c.strokeStyle = PAPER; c.strokeText('Hotspot', h.x, h.y - 14 * ZW); c.fillText('Hotspot', h.x, h.y - 14 * ZW); });
+  c.restore();
+  c.save(); setBase(c); c.font = `400 11px ${FONT}`; c.textAlign = 'left'; c.textBaseline = 'middle';
+  c.fillStyle = PAPER; c.globalAlpha = .92; c.fillRect(FX + 8, FY + FH - 170, 196, 66); c.globalAlpha = 1;
+  [[1, 'Convergent: plates collide'], [2, 'Divergent: plates pull apart'], [3, 'Transform: plates slide past']].forEach(([t, txt], i) => { c.strokeStyle = cols[t]; c.lineWidth = 1.5; c.beginPath(); c.arc(FX + 20, FY + FH - 158 + i * 20, 3, 0, 6.29); c.stroke(); c.fillStyle = INK; c.fillText(txt, FX + 30, FY + FH - 158 + i * 20); });
+  c.restore();
+}
+function drawRockLegend(c) {
+  c.save(); setBase(c); c.font = `400 11px ${FONT}`; c.textBaseline = 'middle'; c.textAlign = 'left';
+  c.fillStyle = PAPER; c.globalAlpha = .92; c.fillRect(FX + FW - 168, FY + 14, 154, 112); c.globalAlpha = 1;
+  ROCKS.slice(1).forEach((r, i) => { const y = FY + 26 + i * 20; c.fillStyle = `rgb(${r.col})`; c.fillRect(FX + FW - 158, y - 6, 14, 12); c.strokeStyle = INK; c.lineWidth = .8; c.strokeRect(FX + FW - 158, y - 6, 14, 12); c.fillStyle = INK; c.fillText(`${r.n}${r.sol ? ', dissolves' : r.hard > .8 ? ', hard' : r.hard < .3 ? ', soft' : ''}`, FX + FW - 138, y); });
+  c.restore();
+}
+
+// ---------- clouds, wind & current particles, birds ----------
+function makeCloud(x, y) {
+  const n = 4 + ((Math.random() * 3) | 0), puffs = [];
+  for (let i = 0; i < n; i++) puffs.push([(i - (n - 1) / 2) * 9 + (Math.random() - .5) * 4, -Math.random() * 5 - (i > 0 && i < n - 1 ? 5 : 0), 7 + Math.random() * 5]);
+  return { x, y, puffs, water: .75 + Math.random() * .25, alpha: 0, rain: 0, life: 1 };
+}
+// clouds form where warm water evaporates and air rises
+function spawnCloud() {
+  const v = view();
+  for (let t = 0; t < 14; t++) { const x = v.x0 + (v.x1 - v.x0) * (.03 + Math.random() * .94), y = v.y0 + (v.y1 - v.y0) * (.03 + Math.random() * .9), k = cellAt(x, y); if (k < 0 || land[k]) continue; if (Math.random() < rainBelt(latOf(y)) * clamp((sst[okAt(x, y)] + 6) / 32, .1, 1)) { clouds.push(makeCloud(x, y)); return; } }
+}
+function updateClouds(dt) {
+  const v = view(), mg = 60 / cam.z;
+  if (clouds.length < 10 && Math.random() < dt * 2) spawnCloud();
+  clouds.forEach(cl => {
+    const la = latOf(cl.y), w = windAt(la), sp = (windOverride !== null ? 30 : 18) * ZW;
+    cl.x += w[0] * sp * dt; cl.y += w[1] * sp * dt;
+    const k = cellAt(cl.x, cl.y), a = Math.abs(la);
+    if (k < 0 || cl.x < v.x0 - mg || cl.x > v.x1 + mg || cl.y < v.y0 - mg || cl.y > v.y1 + mg) cl.life = 0;
+    else if (land[k] && elev[k] > 1200 && cl.water > .25) { cl.rain = Math.min(1, cl.rain + dt * 3); cl.water -= dt * .3; }
+    else if (land[k]) { cl.rain = Math.max(0, cl.rain - dt * 1.5); cl.water -= dt * (temp[k] > 33 ? .09 : .02); }
+    else { cl.rain = Math.max(0, cl.rain - dt * 1.5); cl.water = Math.min(1, cl.water + dt * .05); }
+    if (a > 18 && a < 35 && windOverride === null) cl.water -= dt * .05;   // sinking subtropical air dries clouds out
+    if (cl.water < .12) cl.life = 0;
+    cl.alpha = cl.life ? Math.min(1, cl.alpha + dt * .8) : cl.alpha - dt * 1.2;
+  });
+  clouds = clouds.filter(cl => cl.life || cl.alpha > 0);
+}
+function drawCloud(c, cl, now) {
+  const sc = (.62 + .48 * cl.water) * ZW;
+  c.save(); c.globalAlpha = clamp(cl.alpha, 0, 1) * .95;
+  c.translate(cl.x, cl.y); c.scale(sc, sc);
+  if (cl.rain > .05) {
+    const w = windAt(latOf(cl.y)); c.save(); c.strokeStyle = SNOWC; c.lineWidth = 1.2; c.globalAlpha *= cl.rain; c.beginPath();
+    for (let i = 0; i < 8; i++) { const rx_ = (i - 3.5) * 5, ry = 6 + ((now * 55 + i * 13) % 18); c.moveTo(rx_, ry); c.lineTo(rx_ - w[0] * 3 - 1, ry + 6); }
+    c.stroke(); c.restore();
+  }
+  c.strokeStyle = INK; c.lineWidth = 2.6; c.beginPath(); cl.puffs.forEach(([x, y, r]) => { c.moveTo(x + r, y); c.arc(x, y, r, 0, Math.PI * 2); }); c.stroke();
+  c.fillStyle = PAPER; c.beginPath(); cl.puffs.forEach(([x, y, r]) => { c.moveTo(x + r, y); c.arc(x, y, r, 0, Math.PI * 2); }); c.fill();
+  c.lineWidth = .9; c.globalAlpha *= .5; c.beginPath(); c.arc(cl.puffs[1][0], cl.puffs[1][1] + 2, cl.puffs[1][2] * .55, Math.PI * 1.1, Math.PI * 1.6); c.stroke();
+  c.restore();
+}
+let windP = [], curP = [];
+function updateParticles(dt) {
+  const v = view(), W = v.x1 - v.x0, H = v.y1 - v.y0;
+  const reset = p => { p.x = v.x0 + Math.random() * W; p.y = v.y0 + Math.random() * H; p.age = 0; p.tr = []; };
+  if (layers.winds) {
+    while (windP.length < 320) windP.push({ x: v.x0 + Math.random() * W, y: v.y0 + Math.random() * H, age: Math.random() * 4, tr: [] });
+    windP.forEach(p => { const w = windAt(latOf(p.y)), sp = 60 * ZW; p.tr.push([p.x, p.y]); if (p.tr.length > 16) p.tr.shift(); p.x += w[0] * sp * dt; p.y += w[1] * sp * dt; p.age += dt; if (p.age > 5 || p.x < v.x0 || p.x > v.x1 || p.y < v.y0 || p.y > v.y1) reset(p); });
+  } else windP = [];
+  if (layers.currents) {
+    while (curP.length < 380) curP.push({ x: v.x0 + Math.random() * W, y: v.y0 + Math.random() * H, age: Math.random() * 6, tr: [] });
+    curP.forEach(p => {
+      const k = cellAt(p.x, p.y), u = currentAt(p.x, p.y), sp = 38 * ZW;
+      p.tr.push([p.x, p.y]); if (p.tr.length > 12) p.tr.shift(); p.x += u[0] * sp * dt; p.y += u[1] * sp * dt; p.age += dt;
+      if (k < 0 || land[k] || p.age > 7 || Math.hypot(u[0], u[1]) < .03 || p.x < v.x0 || p.x > v.x1 || p.y < v.y0 || p.y > v.y1) reset(p);
+    });
+  } else curP = [];
+}
+function drawParticles(c) {
+  c.save(); c.lineCap = 'round';
+  if (layers.winds) { c.strokeStyle = INK; c.lineWidth = 1.1 * ZW; windP.forEach(p => { if (p.tr.length < 2) return; c.globalAlpha = Math.min(1, p.age) * .5; c.beginPath(); openPath(c, p.tr); c.stroke(); }); }
+  if (layers.currents) { c.lineWidth = 1.3 * ZW; curP.forEach(p => { if (p.tr.length < 2) return; const a = sstA[okAt(p.x, p.y)]; c.strokeStyle = a > 1 ? HEATC : a < -1 ? COLD : INK; c.globalAlpha = Math.min(1, p.age) * .7; c.beginPath(); openPath(c, p.tr); c.stroke(); }); }
+  c.restore();
+}
+function drawCellBands(c) {
+  c.save(); setBase(c); c.font = `italic 400 11px ${FONT}`; c.textAlign = 'right'; c.fillStyle = INK; c.textBaseline = 'middle';
+  const B = [[75, 'Polar cell · polar easterlies'], [60, 'Polar front · rising air, storms'], [45, 'Ferrel cell · westerlies'], [30, 'Subtropical high · sinking dry air'], [15, 'Hadley cell · trade winds'], [0, 'ITCZ · rising air, heavy rain']];
+  [...B, ...B.filter(b => b[0] > 0).map(([l, t]) => [-l, t])].forEach(([l, t]) => { const y = w2d([0, yOfLat(l)])[1]; if (y < FY + 10 || y > FY + FH - 10) return; c.lineWidth = 3; c.strokeStyle = PAPER; c.strokeText(t, FX + FW - 10, y); c.fillText(t, FX + FW - 10, y); });
+  c.restore();
+}
+// cold, salty surface water sinks near the poles and drives the deep overturning circulation
+function drawDeepWater(c) {
+  c.save(); c.strokeStyle = COLD; c.lineWidth = 1.1 * ZW; c.font = `italic 400 ${10 * ZW}px ${FONT}`; c.fillStyle = COLD; c.textAlign = 'center';
+  let lab = 0;
+  for (let j = 2; j < OROWS - 2; j += 4) for (let i = (j * 3) % 9; i < OCOLS; i += 9) {
+    const k = j * OCOLS + i; if (!oMask[k] || sst[k] > 3.5) continue; const X = FX + (i + .5) * OC * C, Y = FY + (j + .5) * OC * C;
+    c.beginPath(); c.arc(X, Y, 3 * ZW, 0, 6.29); c.moveTo(X - 2 * ZW, Y - 2 * ZW); c.lineTo(X + 2 * ZW, Y + 2 * ZW); c.moveTo(X + 2 * ZW, Y - 2 * ZW); c.lineTo(X - 2 * ZW, Y + 2 * ZW); c.stroke();
+    if (lab++ === 3) c.fillText('Deep water forms here', X, Y + 11 * ZW);
+  }
+  c.restore();
+}
+function forestCenters() {
+  const out = [];
+  islands.forEach(isl => { let n = 0, x = 0, y = 0; trees.forEach(t => { if (t.isl === isl.id) { n++; x += t.x; y += t.y; } }); if (n >= 24) out.push({ isl, p: [x / n, y / n] }); });
+  return out;
+}
+let forestCache = [], forestT = 0;
+function updateBirds(dt, now) {
+  if (now - forestT > 1) { forestCache = forestCenters(); forestT = now; }
+  const fc = forestCache;
+  if (!fc.length) { flock = null; return; }
+  if (!flock) { const st = fc[0].p; flock = { x: st[0], y: st[1], leg: 0, birds: Array.from({ length: 9 }, () => ({ x: st[0], y: st[1] })), dir: [1, 0] }; toast('birds', `The forests of ${fc[0].isl.name || 'this land'} are big enough now. Birds have started to migrate.`); }
+  let tgt; const span = Math.max(40, (fc[0].isl.bbox.maxX - fc[0].isl.bbox.minX));
+  if (fc.length > 1) tgt = fc[flock.leg % fc.length].p;
+  else { const h = fc[0].p, lat = latOf(h[1]); tgt = flock.leg % 2 ? [clamp(h[0] + span * .5, FX + 10, FX + FW - 10), clamp(h[1] + (lat > 0 ? span : -span), FY + 10, FY + FH - 10)] : h; }
+  const dx = tgt[0] - flock.x, dy = tgt[1] - flock.y, d = Math.hypot(dx, dy), sp = clamp(span / 6, 6, 60);
+  if (d < sp * .3) flock.leg++;
+  else { const u = [dx / d, dy / d]; flock.dir = [flock.dir[0] + (u[0] - flock.dir[0]) * dt * 2, flock.dir[1] + (u[1] - flock.dir[1]) * dt * 2]; const l = Math.hypot(...flock.dir) || 1; flock.dir = [flock.dir[0] / l, flock.dir[1] / l]; flock.x += flock.dir[0] * sp * dt; flock.y += flock.dir[1] * sp * dt; }
+  const [ux, uy] = flock.dir, px = -uy, py = ux, g = 11 * ZW;
+  flock.birds.forEach((b, i) => { const k = Math.ceil(i / 2), sd = i % 2 ? 1 : -1; const tx = flock.x - ux * k * g + px * sd * k * g * .8, ty = flock.y - uy * k * g + py * sd * k * g * .8; b.x += (tx - b.x) * Math.min(1, dt * 5); b.y += (ty - b.y) * Math.min(1, dt * 5); });
+}
+function drawBirds(c, now) {
+  if (!flock) return; const z = ZW; c.save(); c.strokeStyle = INK; c.lineWidth = 1.2 * z; c.lineCap = 'round'; c.beginPath();
+  flock.birds.forEach((b, i) => { const f = Math.sin(now * 9 + i * 1.7) * .5 + .5; c.moveTo(b.x - 5 * z, b.y - (1 + f * 3) * z); c.quadraticCurveTo(b.x - 2 * z, b.y - z, b.x, b.y + z); c.quadraticCurveTo(b.x + 2 * z, b.y - z, b.x + 5 * z, b.y - (1 + f * 3) * z); });
+  c.stroke(); c.restore();
+}
+
+// ---------- animated layer ----------
+function waveCrest(c, x, y, s, lift) {
+  c.moveTo(x - s, y); c.bezierCurveTo(x - s * .5, y - s * 1.1 - lift, x + s * .6, y - s * 1.2 - lift, x + s * .5, y - s * .4);
+  c.bezierCurveTo(x + s * .4, y - s * .1, x + s * .05, y - s * .25, x + s * .2, y - s * .55);
+}
+let ventCache = [];
+function refreshVents() { ventCache = []; let i = 0; for (let k = 0; k < N; k++) if (has(F.VOLCANO, k) || has(F.GEYSER, k)) ventCache.push([cx_(k), cy_(k), i++, has(F.GEYSER, k)]); }
+function drawAnimated(now, dt) {
+  const tm = RM ? 0 : now, v = view(), z = ZW;
+  if (!layers.currents) {
+    const zq = Math.pow(2, Math.floor(Math.log2(cam.z))), sp = 110 / zq, rr = Math.max(1, Math.ceil(14 * z / C));
+    ctx.save(); ctx.strokeStyle = INK; ctx.lineWidth = .9 * z; ctx.globalAlpha = .4; ctx.beginPath();
+    for (let j = Math.floor(v.y0 / sp); j * sp < v.y1; j++) for (let i = Math.floor(v.x0 / sp); i * sp < v.x1; i++) {
+      const x = (i + .1 + hash3(i, j, 77) * .8) * sp, y = (j + .1 + hash3(i, j, 78) * .8) * sp, k = cellAt(x, y);
+      if (k < 0 || land[k] || nearLand(k, rr)) continue; const ph = hash3(i, j, 79) * 6.28, bb = Math.sin(tm * 1.4 + ph) * 1.5 * z;
+      for (let u = 0; u <= 14; u += 2) { const X = x + u * z, Y = y + bb + Math.sin(u / 14 * Math.PI * 2 + tm * 2 + ph) * 1.5 * z; u ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  islands.forEach(isl => {
+    const age = now - isl.born; if (age < MORPH || !visible(isl.bbox)) return;
+    if (isl.kind === 'volcanic' && (isl.bbox.maxX - isl.bbox.minX) * cam.z < 12) return;
+    ctx.save(); ctx.strokeStyle = INK; ctx.lineCap = 'round';
+    const grow = clamp((age - MORPH) / 1.2, 0, 1);
+    [7, 15].forEach((o, j) => {
+      const off = o * z; ctx.lineWidth = z; ctx.globalAlpha = (j ? .22 : .42) * grow; ctx.setLineDash(j ? [5 * z, 11 * z] : [10 * z, 8 * z]); ctx.lineDashOffset = (j ? -1 : 1) * tm * 7 * z;
+      ctx.beginPath(); coastRuns(ctx, isl.coast.map((p, i) => [p[0] + isl.normals[i][0] * off, p[1] + isl.normals[i][1] * off]), isl.cut); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    const ra = age - MORPH;
+    if (ra < 1.8) for (let r = 0; r < 3; r++) {
+      const k = (ra - r * .22) / 1.3; if (k <= 0 || k >= 1) continue;
+      const off = (4 + ease(k) * 38) * z; ctx.globalAlpha = (1 - k) * .7; ctx.lineWidth = (1.3 * (1 - k) + .3) * z;
+      ctx.beginPath(); coastRuns(ctx, isl.coast.map((p, i) => [p[0] + isl.normals[i][0] * off + Math.sin(i * .5 + k * 9) * k * 1.6 * z, p[1] + isl.normals[i][1] * off]), isl.cut); ctx.stroke();
+    }
+    ctx.restore();
+  });
+  islands.forEach(isl => { if (isl._anim) drawIsland(ctx, isl, now, true); });
+  // heat shimmer over land too hot for life
+  ctx.save(); ctx.strokeStyle = HEATC; ctx.lineWidth = 1.15 * z; ctx.lineCap = 'round'; ctx.beginPath();
+  const aN = climA(simT);
+  forMarks(26, (k, x, y, ph) => { if (temp[k] + aN * polarAmp(latOf(y)) < 35) return; for (let j = -1; j <= 1; j++) { const x0 = x + j * 3.6 * z; for (let u = 0; u <= 12; u += 2) { const X = x0 + Math.sin(u * .55 + tm * 4 + ph + j) * 1.3 * z, Y = y + (6 - u) * z; u ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); } } });
+  ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.strokeStyle = INK; ctx.lineWidth = 1.1 * z; ctx.lineCap = 'round'; ctx.beginPath();
+  rivers.filter(r => r.canal).forEach(r => { const every = Math.max(1, Math.round(22 / (5 * r.k * cam.z))); r.pts.forEach((p, i) => { if (i % every) return; const alt = (i / every) % 2, lift = Math.sin(tm * 3 + i) * 1.6 * z; waveCrest(ctx, p[0] + (alt ? 9 : -9) * z, p[1] + (alt ? 4 : -2) * z, 6 * z, lift); }); });
+  ctx.stroke(); ctx.restore();
+  // smoke from volcanoes, steam from geysers
+  ctx.save(); ctx.strokeStyle = INK; ctx.lineWidth = z;
+  const puffs = (x, y, q, i0, steam) => { const w = windAt(latOf(y)); for (let i = 0; i < (steam ? 3 : 4); i++) { const ph = ((tm * (steam ? .6 : .3)) + i / 4 + i0) % 1; ctx.globalAlpha = (1 - ph) * (steam ? .4 : .6); ctx.strokeStyle = steam ? SNOWC : INK; ctx.beginPath(); ctx.arc(x + (w[0] * ph * 34 + Math.sin(ph * 6 + i) * 3) * q, y - (23 + ph * 40 - w[1] * ph * 20) * q, (3 + ph * 8) * q, 0, Math.PI * 2); ctx.stroke(); } };
+  volcanoes.forEach(vo => puffs(vo.x, vo.y, vo.s / 21, 0, false));
+  if (cam.z > 1.5) ventCache.forEach(([x, y, i, g]) => { if (x > v.x0 && x < v.x1 && y > v.y0 && y < v.y1) puffs(x, y + 6 * z, .4 * z, i * .17, g); });
+  ctx.restore();
+  if (drag && !drag.pan && drag.pts && drag.pts.length > 1) {
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (drag.tool === 'pencil') { ctx.strokeStyle = INK; ctx.lineWidth = 1.8 * z; ctx.beginPath(); smoothPath(ctx, drag.pts, false); ctx.stroke(); }
+    if (drag.tool === 'river') { ctx.strokeStyle = INK; ctx.lineWidth = 5 * z; ctx.beginPath(); smoothPath(ctx, drag.pts, false); ctx.stroke(); ctx.strokeStyle = WATER; ctx.lineWidth = 3 * z; ctx.stroke(); }
+    ctx.restore();
+  }
+  if (ruler) drawRuler(ctx);
+  if (tool === 'eraser' && hoverW && !(drag && drag.pan)) { ctx.save(); ctx.strokeStyle = INK; ctx.lineWidth = z; ctx.setLineDash([3 * z, 3 * z]); ctx.beginPath(); ctx.arc(hoverW[0], hoverW[1], eraseR * z, 0, 6.29); ctx.stroke(); ctx.restore(); }
+  updateParticles(dt); drawParticles(ctx);
+  if (layers.currents) drawDeepWater(ctx);
+  updateBirds(dt, now); drawBirds(ctx, now);
+  updateClouds(dt); clouds.forEach(cl => drawCloud(ctx, cl, now));
+  if (layers.winds) drawCellBands(ctx);
+}
+function drawRuler(c) {
+  const { a, b } = ruler, L = dist(a, b), z = ZW; if (L < 2 * z) return;
+  const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+  c.save(); c.strokeStyle = INK; c.lineWidth = 1.3 * z; c.lineCap = 'round'; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]);
+  for (let d = 0, i = 0; d <= L; d += 12 * z, i++) { const h = (i % 5 ? 3 : 6) * z; const x = a[0] + ux * d, y = a[1] + uy * d; c.moveTo(x - uy * h, y + ux * h); c.lineTo(x + uy * h, y - ux * h); }
+  c.moveTo(b[0] - uy * 7 * z, b[1] + ux * 7 * z); c.lineTo(b[0] + uy * 7 * z, b[1] - ux * 7 * z); c.stroke();
+  const km = haversine(a, b), txt = `${(km < 100 ? Math.round(km) : Math.round(km / 10) * 10).toLocaleString()} km`;
+  c.font = `400 ${15 * z}px ${FONT}`; const tw = c.measureText(txt).width, mx_ = (a[0] + b[0]) / 2 + uy * 18 * z, my_ = (a[1] + b[1]) / 2 - ux * 18 * z;
+  c.fillStyle = PAPER; c.fillRect(mx_ - tw / 2 - 6 * z, my_ - 11 * z, tw + 12 * z, 20 * z); c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, mx_, my_);
+  c.restore();
+}
+
+// ---------- layout ----------
+function makeGrain() {
+  const g = document.createElement('canvas'); g.width = g.height = 220; const gx = g.getContext('2d'), im = gx.createImageData(220, 220);
+  for (let i = 0; i < im.data.length; i += 4) { const r = Math.random(); im.data[i] = im.data[i + 1] = im.data[i + 2] = 255; im.data[i + 3] = r < .3 ? 120 + Math.random() * 135 : 0; }
+  gx.putImageData(im, 0, 0); $('grain').style.backgroundImage = `url(${g.toDataURL()})`; $('grain').style.backgroundSize = '110px 110px';
+}
+function layout() {
+  const vw = innerWidth, vh = innerHeight; dpr = Math.min(2, devicePixelRatio || 1);
+  // keep a column beside the map for pop-up notes, so they never cover the land you're drawing
+  sideW = vw >= 760 ? clamp(vw * .17, 250, 340) : 0;
+  s = Math.min((vw - sideW) / W0, vh / H0); ox = (vw - sideW - W0 * s) / 2; oy = (vh - H0 * s) / 2;
+  cv.width = stc.width = Math.round(vw * dpr); cv.height = stc.height = Math.round(vh * dpr);
+  design.style.transform = `translate(${ox}px,${oy}px) scale(${s})`;
+  placePops();
+  staticDirty = true;
+}
+const toDesign = e => [(e.clientX - ox) / s, (e.clientY - oy) / s];
+const inFrame = p => p[0] >= FX && p[0] <= FX + FW && p[1] >= FY && p[1] <= FY + FH;
+const clampD = p => [clamp(p[0], FX + 1, FX + FW - 1), clamp(p[1], FY + 1, FY + FH - 1)];
+const islandAt = p => { if (inErase(p)) return null; for (let i = islands.length - 1; i >= 0; i--) if (pip(p, islands[i].coast)) return islands[i]; return null; };
+const onLand = p => { const k = cellAt(p[0], p[1]); return k >= 0 && !!islandAt(p) && (land[k] > 0 || !nearCanal(p)); };
+function nearCanal(p) { return rivers.some(r => r.canal && r.pts.some(q => dist(p, q) < Math.max(6 * r.k, C * .65))); }
+
+// ---------- names & labels ----------
+const SYL = ['ca', 'lis', 'dor', 've', 'ra', 'thal', 'mor', 'en', 'ka', 'lys', 'ser', 'yth', 'ar', 'no', 'vi', 'quen', 'ol', 'tha'];
+function genName(seed) { const n = 2 + (hash3(seed, 3, 3) > .6 ? 1 : 0); let w = ''; for (let i = 0; i < n; i++) w += SYL[Math.floor(hash3(seed, i, 11) * SYL.length)]; return w[0].toUpperCase() + w.slice(1); }
+const CAUSE = ['', 'ocean crust sinking beneath this coast melts and feeds magma upward', 'a hotspot plume rises beneath it', 'the crust is rifting apart here'];
+function buildLabels(isl) {
+  const out = [], size = Math.sqrt(Math.abs(polyArea(isl.base)));
+  const H = hull(isl.base); let best = 0, bi = -1;
+  const depth = isl.base.map(p => { let m = 1e9; for (let i = 0; i < H.length; i++) m = Math.min(m, segDist(p, H[i], H[(i + 1) % H.length])[0]); return m; });
+  depth.forEach((d, i) => { if (d > best) { best = d; bi = i; } });
+  if (bi >= 0 && best > size * .14) {
+    let pos = centroid(isl.base.filter((_, i) => depth[i] > best * .5));
+    if (pip(pos, isl.coast)) { const q = isl.base[bi]; let h = null, m = 1e9; for (let i = 0; i < H.length; i++) { const [d, qq] = segDist(q, H[i], H[(i + 1) % H.length]); if (d < m) { m = d; h = qq; } } for (let t = .2; t <= 1; t += .1) { const c = [q[0] + (h[0] - q[0]) * t, q[1] + (h[1] - q[1]) * t]; if (!pip(c, isl.coast)) { pos = c; break; } } }
+    out.push({ kind: 'bay', x: pos[0], y: pos[1] });
+  }
+  // potential volcano only where the plates let magma rise
+  const idx = islands.indexOf(isl) + 1; let vk = -1;
+  for (let k = 0; k < N; k++) if (land[k] === idx && actv[k] && !has(F.VOLCANO, k) && hash3(k % COLS, (k / COLS) | 0, 31) < .15) { vk = k; break; }
+  if (vk >= 0) out.push({ kind: 'volcano', x: cx_(vk), y: cy_(vk), sx: cx_(vk), sy: cy_(vk), cause: actv[vk] });
+  out.push({ kind: 'home', x: 0, y: 0 });
+  isl.labels = out; placeHome(isl);
+}
+function placeHome(isl) {
+  const h = isl.labels && isl.labels.find(l => l.kind === 'home'); if (!h) return;
+  const idx = islands.indexOf(isl) + 1, others = isl.labels.filter(o => o !== h);
+  if (isl.stats && isl.stats.hotFrac > .04) others.push({ x: isl.stats.hot[0], y: isl.stats.hot[1] });
+  const sep = Math.max((isl.bbox.maxX - isl.bbox.minX) * .18, C * 2);
+  let best = -1, bx_ = 0, by_ = 0;
+  for (let k = 0; k < N; k++) {
+    if (land[k] !== idx || dco[k] > 3 || hab[k] <= best) continue;
+    const x = cx_(k), y = cy_(k);
+    if (others.some(o => Math.hypot(o.x - x, o.y - y) < sep)) continue;
+    best = hab[k]; bx_ = x; by_ = y;
+  }
+  h.hidden = best < .05; h.x = bx_; h.y = by_;
+}
+let labelEls = [];
+function renderLabels() {
+  const L = $('labels'); L.textContent = ''; labelEls = [];
+  const add = (tag, cls, text, x, y, ox_, oy_, isl, onClick) => { const e = document.createElement(tag); e.className = 'lbl ' + cls; e.textContent = text; if (onClick) { e.type = 'button'; e.addEventListener('click', onClick); } L.appendChild(e); labelEls.push({ e, x, y, ox: ox_, oy: oy_, isl }); };
+  islands.forEach(isl => {
+    if (!isl.named || isl._anim || isl.kind === 'volcanic') return;
+    (isl.labels || []).forEach(l => {
+      if (l.hidden) return;
+      if (l.kind === 'bay') add('span', '', 'Bay', l.x, l.y, 0, 0, isl);
+      if (l.kind === 'volcano' && !has(F.VOLCANO, cellAt(l.sx, l.sy))) add('button', 'sug', 'Potential Volcano', l.x, l.y, 0, -28, isl, () => { pushUndo(); volcanoes.push({ x: l.sx, y: l.sy, s: Math.min(21 * isl.k, (isl.bbox.maxX - isl.bbox.minX) * .12) }); l.kind = 'volcanoDone'; toast('volcano-' + isl.id, `A volcano now rises on ${isl.name} because ${CAUSE[l.cause] || 'magma found a way up'}.`); refreshAll(); });
+      if (l.kind === 'home') add('button', 'sug small', 'Home?', l.x, l.y, 0, -18, isl, () => { pushUndo(); homes.push({ x: l.x, y: l.y, s: isl.k }); l.kind = 'settled'; staticDirty = true; renderLabels(); });
+      if (l.kind === 'settled') add('span', 'small', 'Settlement', l.x, l.y, 0, -26, isl);
+    });
+    if (isl.stats && isl.stats.hotFrac > .04) add('span', 'hot', `${Math.round(isl.stats.tmax)}°C, too hot for life`, isl.stats.hot[0], isl.stats.hot[1], 0, 22, isl);
+  });
+  rivers.forEach(r => { if (r.canal && r.label) add('span', 'small', 'High winds & waves', r.label[0], r.label[1], r.label[2], r.label[3], islands.find(i => i.id === r.isl)); });
+  $('empty').hidden = islands.length > 0;
+  positionLabels();
+}
+function positionLabels() {
+  labelEls.forEach(o => {
+    const d = w2d([o.x, o.y]), x = d[0] + o.ox, y = d[1] + o.oy;
+    const big = !o.isl || (o.isl.bbox.maxX - o.isl.bbox.minX) * cam.z > 110;
+    const show = big && x > FX + 20 && x < FX + FW - 20 && y > FY + 12 && y < FY + FH - 12;
+    o.e.hidden = !show; if (show) { o.e.style.left = x + 'px'; o.e.style.top = y + 'px'; }
+  });
+}
+
+// ---------- notes: discoveries collect in a side tab instead of covering the map ----------
+let toastQ = [], notes = [], unread = 0, notesOpen = false;
+function toast(key, text, action) { if (shown.has(key)) return; shown.add(key); toastQ.push([text, action]); }
+// each note also pops up briefly beside the map (in the page margin when there is room), then lives on in the Notes tab
+let popQ = [], lastPop = -9;
+function flushToasts() {
+  const now = performance.now() / 1000;
+  if (toastQ.length) {
+    while (toastQ.length) { const [text, action] = toastQ.shift(); const n = { text, action, t: simT }; notes.unshift(n); popQ.push(n); if (!notesOpen) unread++; }
+    if (notes.length > 120) notes.length = 120;
+    if (popQ.length > 5) popQ = popQ.slice(-5);
+    renderNotes();
+    const tab = $('notesTab'); tab.classList.remove('ping'); void tab.offsetWidth; tab.classList.add('ping');
+  }
+  if (popQ.length && now - lastPop > 1.6 && !notesOpen) { lastPop = now; showPop(popQ.shift()); }
+}
+function showPop(n) {
+  const box = $('popStack'), t = document.createElement('div'); t.className = 'toast';
+  const p = document.createElement('div'); p.textContent = n.text; t.appendChild(p);
+  const m = document.createElement('span'); m.className = 'nt'; m.textContent = `Year ${fmtInt(n.t)}`; t.appendChild(m);
+  if (n.action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'act'; b.textContent = n.action.label; b.addEventListener('click', e => { e.stopPropagation(); n.action.fn(); t.remove(); }); t.appendChild(b); }
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.setAttribute('aria-label', 'Dismiss'); x.textContent = '×'; x.addEventListener('click', e => { e.stopPropagation(); t.remove(); }); t.appendChild(x);
+  t.addEventListener('click', () => { setNotes(true); });
+  box.prepend(t); while (box.children.length > 3) box.lastChild.remove();
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 500); }, 9000);
+}
+function placePops() {
+  const box = $('popStack'), vw = innerWidth, edge = ox + 1272 * s, gutter = vw - edge;
+  if (sideW) { const w = Math.min(320, gutter - 24); box.style.left = (edge + 10) + 'px'; box.style.top = (oy + 96 * s) + 'px'; box.style.width = w + 'px'; box.classList.remove('inside'); }
+  else { const w = Math.min(320, vw - 32); box.style.left = Math.max(16, ox + (FX + FW - 52) * s - w) + 'px'; box.style.top = (oy + 62 * s) + 'px'; box.style.width = w + 'px'; box.classList.add('inside'); }
+}
+function renderNotes() {
+  const badge = $('notesCount'); badge.textContent = unread > 99 ? '99+' : unread; badge.hidden = !unread;
+  $('notesTab').setAttribute('aria-label', unread ? `Notes, ${unread} new` : 'Notes');
+  if (!notesOpen) return;
+  const list = $('notesList'); list.textContent = '';
+  $('notesEmpty').hidden = notes.length > 0;
+  notes.forEach(n => {
+    const li = document.createElement('li'); const p = document.createElement('div'); p.textContent = n.text; li.appendChild(p);
+    const m = document.createElement('span'); m.className = 'nt'; m.textContent = `Year ${fmtInt(n.t)}`; li.appendChild(m);
+    if (n.action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'act'; b.textContent = n.action.label; b.addEventListener('click', () => { n.action.fn(); setNotes(false); }); li.appendChild(b); }
+    list.appendChild(li);
+  });
+}
+function setNotes(open) { if (open) $('popStack').textContent = ''; notesOpen = open; $('notesPanel').hidden = !open; $('notesTab').setAttribute('aria-expanded', String(open)); if (open) unread = 0; renderNotes(); }
+$('notesTab').addEventListener('click', () => setNotes(!notesOpen));
+$('notesClose').addEventListener('click', () => setNotes(false));
+$('notesClear').addEventListener('click', () => { notes = []; unread = 0; renderNotes(); });
+function suggest() {
+  islands.forEach(isl => {
+    if (!isl.named || !isl.stats || isl.kind === 'volcanic') return; const st = isl.stats, nm = isl.name;
+    if (st.hotFrac > .1) toast('hot-' + isl.id, `${st.areaFrac > .12 ? nm + ' is so vast that its interior' : 'The interior of ' + nm} reaches ${Math.round(st.tmax)}°C, too hot for life. Draw a river through it to cool the land.`, { label: 'Draw a river', fn: () => { setTool('river'); focusIsland(isl); } });
+    if (st.coldFrac > .35) toast('cold-' + isl.id, `Most of ${nm} lies under ice. Life will gather on its warmer coast.`);
+    if (st.aridFrac > .25 && mountains.some(m => m.isl === isl.id)) toast('dry-' + isl.id, `The mountains on ${nm} catch the rain, leaving a dry shadow behind them. Turn the wind compass to move it.`);
+  });
+}
+function announceNews() {
+  const seen = new Set();
+  pendingNews.forEach(([f, li, k]) => {
+    const isl = islands[li]; if (!isl || !isl.named || f === F.RIVER || f === F.LAKE) return; const key = `${f}-${isl.id}`; if (seen.has(key)) return; seen.add(key);
+    toast('feat-' + key, `${FEATS[f][1]} formed on ${isl.name || 'this land'}. ${why(f, k)}`);
+  });
+  pendingNews = [];
+}
+
+// ---------- why each landform is here ----------
+function why(f, k) {
+  const la = latOf(cy_(k)), T = Math.round(temp[k] + climA(simT) * polarAmp(la)), mm = fmtInt(Math.max(10, Math.round(precip[k] * 2000 / 50) * 50)), r = ROCKS[rock[k]].n.toLowerCase();
+  switch (f) {
+    case F.GLACIER: return `Snow piles up faster than it melts here (${T}°C, ${mm} mm a year) and compacts into flowing ice.`;
+    case F.ICESHEET: return 'Ice has spread across more than 50,000 km² of land during the cold phase of the ice-age cycle.';
+    case F.ICECAP: return 'A dome of ice smaller than 50,000 km² sits on this high ground.';
+    case F.MORAINE: return 'Rock debris bulldozed to the outer edge of the ice marks how far the glacier reached.';
+    case F.CIRQUE: return `Ice sat in this mountain hollow for ${fmtAge(iceYears[k])}, plucking and scooping it into a steep bowl.`;
+    case F.HORN: return 'Glaciers ate into this peak from three or more sides, leaving a sharp pyramid.';
+    case F.ARETE: return 'Glaciers carved valleys on both sides, leaving a knife-edge ridge between them.';
+    case F.FJORD: return 'A glacier carved a deep valley down to the coast. When the ice melted, the rising sea flooded it.';
+    case F.DRUMLIN: return 'An ice sheet flowing over soft ground moulded it into oval hills that point the way the ice moved.';
+    case F.KAME: return 'Meltwater dumped sand and gravel in mounds at the edge of the shrinking ice.';
+    case F.ESKER: return 'Meltwater rivers running in tunnels under the ice sheet left this winding gravel ridge.';
+    case F.SWAMP: return `Warm, waterlogged flat ground where trees grow (${T}°C, ${mm} mm a year).`;
+    case F.MARSH: return 'Waterlogged flat ground beside water, covered in reeds and grasses rather than trees.';
+    case F.BOG: return `Cool, wet ground over watertight ${r}. Moss slowly builds up as acidic peat.`;
+    case F.FEN: return `A cool wetland fed by mineral-rich groundwater seeping through ${r}, less acidic than a bog.`;
+    case F.MANGROVE: return `A sheltered tropical coast with a warm sea (${Math.round(sst[okAt(cx_(k), cy_(k))])}°C) where salt-tolerant trees root in tidal mud.`;
+    case F.CAVE: return `Rain, made slightly acidic by CO₂, has been dissolving this limestone underground for ${fmtAge(karstYears[k])}.`;
+    case F.SINKHOLE: return 'Dissolving limestone left a hollow underground that collapsed. Surface water drains away here.';
+    case F.CENOTE: return 'A limestone sinkhole near the coast collapsed down to the water table, exposing clear groundwater.';
+    case F.KTOWER: return `Heavy tropical rain dissolved the limestone around these harder pillars for ${fmtAge(karstYears[k])}.`;
+    case F.DUNE: return `Too dry for plants to hold the ground (${mm} mm a year), so the ${windName(la)} pile loose sand into dunes.`;
+    case F.ERG: return 'Dune fields have joined into one large sea of sand with almost no plants.';
+    case F.PLAYA: return 'This basin has no outlet and the climate is dry. Rainwater pools, then evaporates to a flat salt crust.';
+    case F.YARDANG: return `The steady ${windName(la)} have sandblasted soft ${r} into ridges lined up with the wind.`;
+    case F.VOLCANO: return actv[k] ? `Magma reaches the surface because ${CAUSE[actv[k]]}.` : 'An extinct volcano, carried away from the magma that built it.';
+    case F.CALDERA: return 'A huge eruption emptied the magma chamber and the volcano\'s summit collapsed into it.';
+    case F.LAVA: return 'Runny basalt lava poured from cracks in the ground and hardened into a broad, flat field.';
+    case F.GEYSER: return 'Rainwater seeps down to rock heated by magma, boils under pressure and bursts back up.';
+    case F.RIFT: return `Two plates are pulling apart (${bRate[k].toFixed(1)} cm a year) and a block of crust has dropped between parallel faults.`;
+    case F.FAULT: return `Two plates grind sideways past each other here (${bRate[k].toFixed(1)} cm a year).`;
+    case F.FOLD: return dCC[k] < 4 ? 'Two continents collide here, crumpling and lifting the crust into mountains.' : 'Ocean crust dives under this continent, squeezing and lifting the coast into a volcanic mountain range.';
+    case F.RIVER: return 'Rain from upstream gathers here and flows downhill to the sea.';
+    case F.LAKE: return 'Water fills a hollow with no lower way out until it spills over the rim.';
+    case F.DELTA: return 'The river slows where it meets the sea and drops its silt. Sea level has held steady long enough for land to build out.';
+    case F.OXBOW: return 'On this flat floodplain the river looped back and forth, then cut through the neck of a loop, leaving a curved lake.';
+    case F.AFAN: return 'The river spills out of steep mountains onto flat ground, slows and spreads its gravel in a fan.';
+    case F.CANYON: return `The river has been cutting down into rising ${r} for ${fmtAge(riverYears[k])}.`;
+  }
+  return '';
+}
+
+// ---------- card ----------
+function screenBox(isl) { const a = w2d([isl.bbox.minX, isl.bbox.minY]), b = w2d([isl.bbox.maxX, isl.bbox.maxY]); return { minX: a[0], minY: a[1], maxX: b[0], maxY: b[1] }; }
+function cardPos(isl) {
+  const b = screenBox(isl); let x = b.maxX + 104; if (x + 395 > FX + FW - 30) x = b.minX - 104 - 395;
+  x = clamp(x, FX + 24, FX + FW - 30 - 395); const y = clamp(b.minY - 135, FY + 60, FY + FH - 372 - 110); return [x, y];
+}
+function openCard(isl) { selectedId = isl.id; const [x, y] = cardPos(isl); const c = $('card'); c.style.left = x + 'px'; c.style.top = y + 'px'; c.hidden = false; $('cardMini').hidden = true; fillCard(); updateCompass(); }
+function islandLandforms(isl) {
+  const idx = islands.indexOf(isl) + 1, cnt = new Array(NF).fill(0);
+  for (let k = 0; k < N; k++) if (land[k] === idx) for (let f = 0; f < NF; f++) if (featT[f][k] >= 0 && f !== F.RIVER) cnt[f]++;
+  return cnt.map((n, f) => [n * (POINT_LABEL.has(f) ? 6 : 1), f]).filter(a => a[0] > 0).sort((a, b) => b[0] - a[0]).slice(0, 4).map(a => FEATS[a[1]][1]);
+}
+function fillCard() {
+  const isl = islands.find(i => i.id === selectedId); if (!isl) { $('card').hidden = true; $('cardMini').hidden = true; return; }
+  $('cardTitle').textContent = isl.name; $('miniName').textContent = isl.name;
+  const st = isl.stats;
+  $('vVeg').textContent = st ? st.vegetation : '—'; $('vClim').textContent = st ? st.climate : '—'; $('vAni').textContent = st ? st.animals : '—';
+  const lf = islandLandforms(isl); $('vLand').textContent = lf.length ? lf.join(', ') : 'Still forming. Let time run.';
+  const pct = st ? st.survival : 0; $('vBar').style.width = pct + '%'; $('vPct').textContent = pct + '%';
+}
+$('cardClose').addEventListener('click', () => { $('card').hidden = true; selectedId = null; });
+$('cardCollapse').addEventListener('click', () => { const c = $('card'), m = $('cardMini'); m.style.left = c.style.left; m.style.top = c.style.top; c.hidden = true; m.hidden = false; });
+const expand = () => { const isl = islands.find(i => i.id === selectedId); if (isl) openCard(isl); };
+$('cardMini').addEventListener('click', expand); $('cardMini').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expand(); } });
+
+// ---------- naming ----------
+function openNamePill(isl) {
+  pendingName = isl; const b = screenBox(isl); let x = b.maxX + 62; if (x + 338 > FX + FW - 20) x = b.minX - 62 - 338;
+  x = clamp(x, FX + 20, FX + FW - 20 - 338); const y = clamp(b.minY - 102, FY + 20, FY + FH - 200);
+  const p = $('namePill'); p.style.left = x + 'px'; p.style.top = y + 'px'; p.hidden = false; $('card').hidden = true; $('cardMini').hidden = true;
+  const inp = $('nameInput'); inp.value = ''; setTimeout(() => inp.focus({ preventScroll: true }), 30);
+}
+function commitName() {
+  const isl = pendingName; if (!isl) return; pendingName = null; $('namePill').hidden = true;
+  isl.name = $('nameInput').value.trim() || genName(isl.seed); isl.named = true; $('nameInput').blur();
+  buildLabels(isl); renderLabels(); openCard(isl); suggest();
+}
+$('namePill').addEventListener('submit', e => { e.preventDefault(); commitName(); });
+
+// ---------- actions ----------
+const KEEP = ['id', 'seed', 'k', 'base', 'coast', 'normals', 'name', 'named', 'labels', 'kind', 'birth', 'hot', 'r0', 'rel', 'relB', 'cx', 'cy'];
+function snapshot() {
+  return structuredClone({ islands: islands.map(i => { const o = {}; KEEP.forEach(f => { if (i[f] !== undefined) o[f] = i[f]; }); return o; }), mountains, trees, rivers, volcanoes, homes, windOverride, nextId, atolls, seamounts, erases });
+}
+function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 40) undoStack.shift(); }
+function restore(sn) {
+  islands = sn.islands.map(i => prepIsland({ ...i, born: -1e9 })); mountains = sn.mountains; trees = sn.trees; rivers = sn.rivers; volcanoes = sn.volcanoes; homes = sn.homes; windOverride = sn.windOverride; nextId = sn.nextId; atolls = sn.atolls || []; seamounts = sn.seamounts || []; erases = sn.erases || [];
+  pendingName = null; $('namePill').hidden = true; forestT = -9; landChanged = true; refreshAll();
+  if (!islands.some(i => i.id === selectedId)) { $('card').hidden = true; $('cardMini').hidden = true; selectedId = null; }
+  $('compass').hidden = !mountains.length;
+}
+function resetTime() { simT = 0; lastGeoSimT = 0; veg.fill(0); vegTrend.fill(0); meltC.fill(0); [iceYears, sheetYears, wetYears, karstYears, aridYears, volcYears, riverYears, deltaYears, coastYears].forEach(a => a.fill(0)); iceNow.fill(0); featT.forEach(a => a.fill(-1)); HOTSPOTS.forEach(h => { h.lastSpawn = -9e9; h.n = 0; }); featDirty = true; updateTimeUI(0, 0); }
+$('undoBtn').addEventListener('click', () => { const sn = undoStack.pop(); if (sn) restore(sn); });
+$('newBtn').addEventListener('click', () => { pushUndo(); resetTime(); restore({ islands: [], mountains: [], trees: [], rivers: [], volcanoes: [], homes: [], windOverride: null, nextId, atolls: [], seamounts: [], erases: [] }); notes = []; unread = 0; toastQ = []; popQ = []; $('popStack').textContent = ''; renderNotes(); flock = null; flyTo(1, FX + FW / 2, FY + FH / 2); });
+
+function refreshAll() { updateCuts(); geoUpdate(true); islands.forEach(placeHome); paintOverlay(); computeFeatLabels(); refreshVents(); renderLabels(); fillCard(); suggest(); updateCompass(); staticDirty = true; }
+let climT = 0; function scheduleClimate() { clearTimeout(climT); climT = setTimeout(refreshAll, 160); }
+
+function createIsland(pts) {
+  const seed = (Math.random() * 1e6) | 0, k = ZW;
+  const { base, coast, normals } = coastalize(pts, seed, 1, k);
+  if (Math.abs(polyArea(base)) * cam.z * cam.z < 900) return null;
+  if (pendingName) commitName();
+  const isl = prepIsland({ id: nextId++, seed, k, base, coast, normals, name: '', named: false, labels: [], born: performance.now() / 1000 });
+  // drawing new land over an old hole fills it back in
+  erases = erases.map(e => ({ ...e, blobs: e.blobs.filter(b => !pip(b.c, isl.coast)) })).filter(e => e.blobs.length).map(eraseBBox);
+  islands.push(isl); landChanged = true; refreshAll();
+  return isl;
+}
+function placeMountain(p) {
+  const isl = islandAt(p); if (!isl || !onLand(p)) return false;
+  if (mountains.some(m => Math.hypot(m.x - p[0], m.y - p[1]) < 10 * ZW)) return false;
+  const first = mountains.length === 0, sz = ZW;
+  mountains.push({ x: p[0] + (Math.random() - .5) * 5 * sz, y: p[1] + (Math.random() - .5) * 5 * sz, s: (13 + Math.random() * 8) * sz, seed: (Math.random() * 1e5) | 0, isl: isl.id });
+  if (Math.random() < .4) { const q = [p[0] + (Math.random() - .5) * 26 * sz, p[1] + (8 + Math.random() * 6) * sz]; if (onLand(q)) mountains.push({ x: q[0], y: q[1], s: (8 + Math.random() * 4) * sz, seed: (Math.random() * 1e5) | 0, isl: isl.id }); }
+  if (first) { $('compass').hidden = false; toast('mountain', 'Mountains now shape the weather. Air rising over them rains out on the windward side. Drag the compass to steer the wind.'); }
+  staticDirty = true; return true;
+}
+function stampTrees(p) {
+  let any = false; const z = ZW;
+  for (let i = 0; i < 3; i++) {
+    const a = Math.random() * 6.28, r = Math.random() * 16 * z, q = [p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r];
+    const isl = islandAt(q); if (!isl || !onLand(q) || trees.length > 4000) continue;
+    if (mountains.some(m => Math.hypot(m.x - q[0], m.y - q[1]) < m.s * .8) || trees.some(t => Math.hypot(t.x - q[0], t.y - q[1]) < 5 * z)) continue;
+    const k = cellAt(q[0], q[1]); const tsz = (k >= 0 && temp[k] < 2 ? 6 : 7 + Math.random() * 3) * z;
+    trees.push({ x: q[0], y: q[1], s: tsz, seed: (Math.random() * 100) | 0, isl: isl.id, t0: simT }); any = true;
+    if (k >= 0) { veg[k] = Math.min(.9, Math.max(veg[k], .35) + .06); nbrs(k, k2 => { if (land[k2]) veg[k2] = Math.max(veg[k2], .12); }, false); }
+  }
+  if (any) staticDirty = true; return any;
+}
+function createRiver(raw) {
+  const z = ZW;
+  let pts = resample(raw, Math.max(8, Math.round(perimeter(raw, false) / (5 * z))), false);
+  for (let i = 0; i < 3; i++) pts = smooth(pts, 2, false);
+  const sd = (Math.random() * 1e4) | 0;
+  pts = pts.map((p, i) => { if (i === 0 || i === pts.length - 1) return p; const a = pts[i - 1], b = pts[i + 1], tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1, m = vnoise(i / 6, 0, sd) * 4 * z; return [p[0] - ty / l * m, p[1] + tx / l * m]; });
+  const flags = pts.map(p => onLand(p)), touched = flags.filter(Boolean).length;
+  if (touched < 3) { toast('river-sea-' + Date.now(), 'Rivers need land to run across. Start your stroke on a landmass.'); return; }
+  const sL = flags[0], eL = flags[flags.length - 1];
+  if (!sL && eL) { pts.reverse(); flags.reverse(); }
+  const canal = !sL && !eL;
+  pushUndo();
+  const mid = pts.filter((_, i) => flags[i]); const mp = mid[Math.floor(mid.length / 2)];
+  const isl = islandAt(mp);
+  const r = { pts, canal, seed: sd, k: z, isl: isl ? isl.id : null };
+  if (canal) {
+    const i0 = pts.indexOf(mp), a = pts[Math.max(0, i0 - 2)], b = pts[Math.min(pts.length - 1, i0 + 2)], l = dist(a, b) || 1;
+    r.label = [mp[0], mp[1], -(b[1] - a[1]) / l * 34, (b[0] - a[0]) / l * 34];
+    toast('canal-' + sd, `A strait now cuts through ${isl && isl.name ? isl.name : 'the land'}. Wind funnels through the gap and whips up high waves.`);
+    landChanged = true;
+  }
+  rivers.push(r); refreshAll();
+}
+
+// ---------- pointer, zoom & pan ----------
+cv.addEventListener('contextmenu', e => e.preventDefault());
+let hover = null, hoverT = 0;
+cv.addEventListener('pointerdown', e => {
+  const dp = toDesign(e); if (!inFrame(dp)) return;
+  cv.setPointerCapture(e.pointerId); ZW = 1 / cam.z; $('tip').hidden = true; hover = null;
+  if (e.button === 1 || e.button === 2 || spaceDown) { drag = { pan: true, dp, cam: { ...cam } }; camT = null; cv.classList.add('panning'); return; }
+  if (e.button !== 0) return;
+  const p = d2w(dp);
+  drag = { tool, pts: [p], start: p, moved: 0, acc: 0, undone: false };
+  if (tool === 'mountain' || tool === 'tree') { const snap = snapshot(); if (tool === 'mountain' ? placeMountain(p) : stampTrees(p)) { undoStack.push(snap); drag.undone = true; } }
+  if (tool === 'ruler') ruler = { a: p, b: p };
+  if (tool === 'eraser') { pushUndo(); drag.erase = { r: eraseR / cam.z, blobs: [], last: p }; addBlob(drag.erase, p); eraseBBox(drag.erase); erases.push(drag.erase); staticDirty = true; }
+});
+let hoverW = null;
+cv.addEventListener('pointermove', e => {
+  const dp = toDesign(e); hoverW = inFrame(dp) ? d2w(dp) : null;
+  if (!drag) { hover = inFrame(dp) ? dp : null; hoverT = performance.now(); $('tip').hidden = true; return; }
+  if (drag.pan) { cam.x = drag.cam.x - (dp[0] - drag.dp[0]) / cam.z; cam.y = drag.cam.y - (dp[1] - drag.dp[1]) / cam.z; clampCam(cam); camMoved = true; return; }
+  const p = d2w(clampD(dp)), last = drag.pts[drag.pts.length - 1], d = dist(p, last) * cam.z;
+  if (d < 2.5) return; drag.moved += d; drag.acc += d; drag.pts.push(p);
+  if (drag.tool === 'mountain' && drag.acc > 15) { drag.acc = 0; const snap = drag.undone ? null : snapshot(); if (placeMountain(p) && snap) { undoStack.push(snap); drag.undone = true; } }
+  if (drag.tool === 'tree' && drag.acc > 7) { drag.acc = 0; const snap = drag.undone ? null : snapshot(); if (stampTrees(p) && snap) { undoStack.push(snap); drag.undone = true; } }
+  if (drag.tool === 'ruler') ruler.b = p;
+  if (drag.tool === 'eraser' && drag.erase) { rubTo(drag.erase, p); eraseBBox(drag.erase); staticDirty = true; }
+});
+cv.addEventListener('pointerleave', () => { hover = null; hoverW = null; $('tip').hidden = true; });
+const endDrag = () => {
+  if (!drag) return; const d = drag; drag = null; cv.classList.remove('panning');
+  if (d.pan) return;
+  if (d.tool === 'pencil') {
+    if (d.moved < 28) { const isl = islandAt(d.start); if (isl) isl.named ? openCard(isl) : openNamePill(isl); }
+    else { pushUndo(); const isl = createIsland(d.pts); if (isl) setTimeout(() => { if (islands.includes(isl) && !isl.named) openNamePill(isl); }, (MORPH + POP) * 1000); else undoStack.pop(); }
+  }
+  if (d.tool === 'river' && d.moved > 30) createRiver(d.pts);
+  if (d.tool === 'eraser' && d.erase) {
+    // anything standing on the erased ground goes with it
+    const gone = g => inErase([g.x, g.y]);
+    mountains = mountains.filter(g => !gone(g)); trees = trees.filter(g => !gone(g)); volcanoes = volcanoes.filter(g => !gone(g)); homes = homes.filter(g => !gone(g));
+    landChanged = true; refreshAll(); islands.forEach(isl => { if (isl.named && isl.kind !== 'volcanic') buildLabels(isl); }); renderLabels();
+  }
+  if ((d.tool === 'mountain' || d.tool === 'tree') && d.undone) scheduleClimate();
+  if (d.tool === 'tree' && d.undone) {
+    let n = 0, sc = 0, P = 0; d.pts.forEach(p => { const k = cellAt(p[0], p[1]); if (k >= 0 && land[k]) { n++; sc += cap[k]; P += pBase[k] + wbonus[k]; } });
+    const isl = islandAt(d.start);
+    if (n && sc / n < .06 && isl) toast('plant-dry-' + isl.id + '-' + Math.floor(simT / 1e5), `These saplings get only about ${fmtInt(Math.max(10, Math.round(P / n * 2000 / 10) * 10))} mm of water a year. Unless the forest is big enough to raise the rainfall, or a river runs nearby, they will die within a few centuries.`);
+    else if (n && sc / n < .25 && isl) toast('plant-marg-' + isl.id + '-' + Math.floor(simT / 1e5), `This is marginal ground for trees. A dense planting may hold on and slowly push the rain up. A sparse one will thin out.`);
+  }
+};
+cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); const dp = toDesign(e); if (!inFrame(dp)) return;
+  const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+  zoomAt(dp, Math.exp(-dy * (e.ctrlKey ? .01 : .0018))); $('tip').hidden = true;
+}, { passive: false });
+cv.addEventListener('dblclick', e => {
+  const dp = toDesign(e); if (!inFrame(dp)) return; const isl = islandAt(d2w(dp));
+  if (isl) focusIsland(isl); else { const w = d2w(dp); flyTo(cam.z * 2, w[0], w[1]); }
+});
+const touches = new Map(); let pinch = null;
+cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; touches.set(e.pointerId, toDesign(e)); if (touches.size === 2) { drag = null; const [a, b] = [...touches.values()]; pinch = { d: dist(a, b), m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; } });
+cv.addEventListener('pointermove', e => {
+  if (!touches.has(e.pointerId)) return; touches.set(e.pointerId, toDesign(e));
+  if (pinch && touches.size === 2) { const [a, b] = [...touches.values()], d = dist(a, b), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; zoomAt(m, d / pinch.d); cam.x -= (m[0] - pinch.m[0]) / cam.z; cam.y -= (m[1] - pinch.m[1]) / cam.z; clampCam(cam); pinch = { d, m }; }
+});
+const tEnd = e => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+cv.addEventListener('pointerup', tEnd); cv.addEventListener('pointercancel', tEnd);
+$('zoomIn').addEventListener('click', () => flyTo(cam.z * 2, cam.x + FW / cam.z / 2, cam.y + FH / cam.z / 2));
+$('zoomOut').addEventListener('click', () => flyTo(cam.z / 2, cam.x + FW / cam.z / 2, cam.y + FH / cam.z / 2));
+$('zoomFit').addEventListener('click', () => flyTo(1, FX + FW / 2, FY + FH / 2));
+
+// hover tooltip: what is here and why
+function showTip() {
+  if (!hover || drag) return; const w = d2w(hover), k = cellAt(w[0], w[1]); if (k < 0) return;
+  const tip = $('tip'); let title = '', body = '', meta = '';
+  const la = latOf(w[1]);
+  if (land[k]) {
+    let best = -1; for (const f of [...GLYPH_ORDER, F.CAVE, F.SINKHOLE, F.LAKE, F.RIVER]) if (has(f, k)) { best = f; break; }
+    const T = Math.round(temp[k] + climA(simT) * polarAmp(la));
+    meta = `${ROCKS[rock[k]].n} · ${fmtInt(elev[k])} m · ${T}°C · ${fmtInt(Math.max(10, Math.round(precip[k] * 2000 / 50) * 50))} mm a year · forest ${Math.round(veg[k] * 100)}%${vegTrend[k] > .003 ? ', growing' : vegTrend[k] < -.003 ? ', dying back' : ''}${wbonus[k] > .1 ? ' · river water' : ''}${meltC[k] ? ' · glacier meltwater' : ''}`;
+    if (best >= 0) { title = FEATS[best][1]; body = why(best, k); meta += ` · formed ${fmtAge(simT - featT[best][k])} ago`; }
+    else { title = iceNow[k] ? 'Ice' : BIOMES[biome[k]].n; body = iceNow[k] ? 'Covered by ice during this cold phase.' : 'No distinctive landform here yet. Let time run, or change the terrain around it.'; }
+  } else {
+    const o = okAt(w[0], w[1]), u = currentAt(w[0], w[1]), d = -elev[k];
+    if (enclosed[k]) { const sal = enclosed[k] > 2, big = enclosed[k] % 2 === 0; title = big ? (sal ? 'Salty inland sea' : 'Inland sea') : (sal ? 'Salt lake' : 'Lake'); body = sal ? 'Water trapped inside the land with no way to the ocean. The climate is dry, so evaporation leaves the salts behind and it turns salty.' : 'Water trapped inside the land. Rain and rivers keep it topped up and fresh.'; meta = `Depth about ${fmtInt(-elev[k])} m · water ${Math.round(sst[okAt(w[0], w[1])])}°C`; }
+    else {
+    title = d > 7000 ? 'Ocean trench' : dDiv[k] < 1.2 ? 'Mid-ocean ridge' : d < 200 ? 'Continental shelf' : d < 3500 ? 'Continental slope' : 'Abyssal plain';
+    body = d > 7000 ? 'One plate dives beneath another here, dragging the sea floor down into the deepest part of the ocean.' : dDiv[k] < 1.2 ? 'Plates pull apart and fresh basalt wells up, building an undersea mountain range.' : d < 200 ? 'The shallow, submerged edge of the continent.' : d < 3500 ? 'The steep drop from the shallow shelf to the deep ocean floor.' : 'The vast, flat deep-sea floor, blanketed in fine sediment.';
+    const spd = Math.hypot(u[0], u[1]), dir = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'][Math.round(((Math.atan2(u[1], u[0]) + 6.283) % 6.283) / (Math.PI / 4)) % 8];
+    meta = `Depth ${fmtInt(d)} m · sea ${Math.round(sst[o])}°C${sstA[o] > 1.5 ? ', warm current' : sstA[o] < -1.5 ? ', cold current' : ''}${spd > .15 ? ` · current flows ${dir}` : ''}`;
+    }
+  }
+  tip.textContent = ''; const b = document.createElement('b'); b.textContent = title; tip.appendChild(b); tip.appendChild(document.createTextNode(body)); const m = document.createElement('span'); m.className = 'm'; m.textContent = meta; tip.appendChild(m);
+  tip.style.left = clamp(hover[0] + 16, FX, FX + FW - 300) + 'px'; tip.style.top = clamp(hover[1] + 16, FY, FY + FH - 130) + 'px'; tip.hidden = false;
+}
+
+// ---------- tools, time and layer controls ----------
+const HINTS = {
+  pencil: 'Draw a shape anywhere on the globe. Scroll to zoom, right-drag or hold Space to pan, hover to see why a landform is there.',
+  mountain: 'Drag across land to raise a range. Ranges catch the rain and steer the clouds.',
+  tree: 'Paint forests onto land. Large forests attract migrating birds.',
+  river: 'Drag a river across land. Run it from coast to coast to carve a strait.',
+  ruler: 'Drag to measure the distance between two places.',
+  eraser: 'Drag to carve away land. Enclose a hole to make a lake or inland sea. Press [ or ] to change the brush size.'
+};
+function setTool(t) { tool = t; document.querySelectorAll('.tool').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t))); $('hint').textContent = HINTS[t]; if (t !== 'ruler') ruler = null; }
+document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+document.querySelectorAll('.lyr').forEach(b => b.addEventListener('click', () => { const l = b.dataset.l; layers[l] = !layers[l]; b.setAttribute('aria-pressed', String(layers[l])); staticDirty = true; }));
+function setPlaying(p) { playing = p; $('icoPause').style.display = p ? '' : 'none'; $('icoPlay').style.display = p ? 'none' : ''; $('playBtn').setAttribute('aria-label', p ? 'Pause time' : 'Play time'); }
+$('playBtn').addEventListener('click', () => setPlaying(!playing));
+const SPEED_TXT = ['1k yr/s', '10k yr/s', '100k yr/s', '1M yr/s'];
+$('speedBtn').addEventListener('click', () => { speedI = (speedI + 1) % SPEEDS.length; $('speedBtn').textContent = SPEED_TXT[speedI]; });
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') { $('nameInput').value = ''; commitName(); } return; }
+  if (e.key === ' ') { spaceDown = true; cv.classList.add('pan'); e.preventDefault(); return; }
+  const k = { '1': 'pencil', '2': 'mountain', '3': 'tree', '4': 'river', '5': 'ruler', '6': 'eraser' }[e.key]; if (k) setTool(k);
+  if (e.key === '[') eraseR = Math.max(5, eraseR - 4); if (e.key === ']') eraseR = Math.min(60, eraseR + 4);
+  if (e.key === '+' || e.key === '=') $('zoomIn').click();
+  if (e.key === '-' || e.key === '_') $('zoomOut').click();
+  if (e.key === '0') $('zoomFit').click();
+  if (e.key.toLowerCase() === 'p') setPlaying(!playing);
+  const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (pan) { e.preventDefault(); const t = camT || { ...cam }; flyTo(t.z, t.x + FW / t.z / 2 + pan[0] * FW / t.z * .25, t.y + FH / t.z / 2 + pan[1] * FH / t.z * .25); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); $('undoBtn').click(); }
+  if (e.key === 'Escape') { $('card').hidden = true; if (notesOpen) setNotes(false); }
+  if (e.key.toLowerCase() === 'n') setNotes(!notesOpen);
+});
+addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; cv.classList.remove('pan'); } });
+
+// ---------- compass ----------
+function updateCompass() {
+  const isl = islands.find(i => i.id === selectedId) || islands[0];
+  const w = windAt(isl ? latOf(isl.center[1]) : 10);
+  $('needle').style.transform = `rotate(${Math.atan2(w[1], w[0])}rad)`;
+  $('compassCap').textContent = windOverride === null ? 'Prevailing wind' : 'Steered wind · double-click to reset';
+}
+(() => {
+  const svg = $('compass').querySelector('svg'); let on = false;
+  const set = e => { const r = svg.getBoundingClientRect(); windOverride = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); updateCompass(); scheduleClimate(); };
+  svg.addEventListener('pointerdown', e => { on = true; svg.setPointerCapture(e.pointerId); set(e); });
+  svg.addEventListener('pointermove', e => { if (on) set(e); });
+  svg.addEventListener('pointerup', () => { on = false; });
+  svg.addEventListener('dblclick', () => { windOverride = null; updateCompass(); scheduleClimate(); });
+})();
+
+// ---------- loop ----------
+let lastT = performance.now() / 1000, simAcc = 0, lastA = 0;
+function updateTimeUI(a, SL) {
+  $('timeTxt').textContent = fmtYears(simT);
+  const trend = a - lastA; lastA = a;
+  const phase = a < -5 ? 'Glacial max' : a < -2 ? 'Ice age' : a < -.6 ? (trend > 0 ? 'Warming' : 'Cooling') : 'Interglacial';
+  $('ageTxt').textContent = `${phase} · ${a >= 0 ? '+' : ''}${a.toFixed(1)}°C · sea ${SL >= 0 ? '+' : ''}${Math.round(SL)} m`;
+}
+function loop(ms) { requestAnimationFrame(loop); try { frame(ms); } catch (err) { console.error(err); } }
+function frame(ms) {
+  const now = ms / 1000, dt = Math.min(.05, now - lastT); lastT = now;
+  stepCam(dt);
+  if (playing) {
+    simAcc += dt;
+    if (simAcc >= .25) {
+      const years = SPEEDS[speedI] * simAcc; simAcc = 0;
+      const r = simStep(years); updateTimeUI(r.aNow, r.SL);
+      if (geoDirty || (simT - lastGeoSimT > 250000 && now - lastGeoReal > 1.5)) { lastGeoSimT = simT; lastGeoReal = now; geoUpdate(false); islands.forEach(placeHome); renderLabels(); }
+      paintOverlay(); if (featDirty) { computeFeatLabels(); refreshVents(); featDirty = false; } announceNews(); fillCard(); staticDirty = true;
+    }
+  }
+  flushToasts();
+  let finished = false;
+  islands.forEach(isl => { const a = now - isl.born < MORPH + POP + WASH + .1; if (isl._anim && !a) finished = true; isl._anim = a; });
+  if (finished) { staticDirty = true; renderLabels(); }
+  if (camMoved) { staticDirty = true; positionLabels(); $('zoomFit').textContent = cam.z < 1.01 ? 'Whole world · 1×' : `${cam.z < 10 ? cam.z.toFixed(1) : Math.round(cam.z)}×`; camMoved = false; }
+  if (staticDirty) { renderStatic(now); staticDirty = false; }
+  if (hover && !drag && tool !== 'eraser' && performance.now() - hoverT > 350 && $('tip').hidden) showTip();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(stc, 0, 0);
+  setBase(ctx); ZW = 1 / cam.z;
+  ctx.save(); ctx.beginPath(); ctx.rect(FX, FY, FW, FH); ctx.clip(); applyCam(ctx); drawAnimated(now, dt); ctx.restore();
+}
+
+// ---------- boot: a blank world ----------
+makeGrain(); layout(); addEventListener('resize', layout); setTool('pencil');
+geoUpdate(true); paintOverlay();
+for (let i = 0; i < 10; i++) spawnCloud(); clouds.forEach(c => c.alpha = 1);
+renderLabels(); updateCompass(); updateTimeUI(0, 0);
+document.fonts && document.fonts.ready.then(() => { staticDirty = true; });
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
